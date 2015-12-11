@@ -54,7 +54,7 @@ object RealExpressionField : ExpressionField {
                                     sum = add(sum!!, multiply(lhs, rhs))
                                 }
                             }
-                            return sum!!
+                            return simplify(sum!!)
                         } else {
                             return expression
                         }

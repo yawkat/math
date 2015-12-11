@@ -88,7 +88,7 @@ object RealExpressionField : ExpressionField {
         return Expressions.multiply(left, right)
     }
 
-    private fun divideNumber(numerator: RealNumberExpression, denominator: RealNumberExpression): Rational {
+    private fun divideNumber(numerator: RealNumberExpression, denominator: RealNumberExpression): RealNumberExpression {
         var newNumerator = numerator
         var newDenominator = denominator
         // optimizations
@@ -117,6 +117,10 @@ object RealExpressionField : ExpressionField {
                 }
             }
             break
+        }
+        // a / 1 = a
+        if (newDenominator is IntegerExpression && newDenominator.value.equals(BigInteger.ONE)) {
+            return newNumerator
         }
         return Rational(newNumerator, newDenominator)
     }

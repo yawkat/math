@@ -7,6 +7,7 @@ import at.yawk.math.data.Expressions.int
 import at.yawk.math.data.Expressions.multiply
 import at.yawk.math.data.Expressions.rational
 import at.yawk.math.data.Expressions.subtract
+import at.yawk.math.data.Expressions.vector
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
@@ -43,5 +44,11 @@ class RealExpressionFieldTest {
         assertEquals(
                 simplify(divide(int(2), int(1))),
                 int(2))
+        assertEquals(
+                simplify(multiply(vector(listOf(int(1), int(2), int(3))), int(2))),
+                vector(listOf(int(2), int(4), int(6))))
+        assertEquals(
+                simplify(add(vector(listOf(int(1), int(2), int(3))), vector(listOf(int(2), int(3), int(4))))),
+                vector(listOf(int(3), int(5), int(7))))
     }
 }

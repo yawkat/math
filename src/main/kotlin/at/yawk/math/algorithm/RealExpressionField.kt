@@ -58,6 +58,11 @@ object RealExpressionField : ExpressionField {
                         multiply(left.denominator, right.denominator) as RealNumberExpression)
             }
         }
+        if (left is Vector) {
+            if (right is Vector) {
+                return left.mapIndexed { i, lhs -> add(lhs, right.rows[i]) }
+            }
+        }
         return Expressions.add(left, right)
     }
 
@@ -81,6 +86,9 @@ object RealExpressionField : ExpressionField {
                         multiply(left.numerator, right.numerator) as RealNumberExpression,
                         multiply(left.denominator, right.denominator) as RealNumberExpression)
             }
+        }
+        if (left is Vector) {
+            return left.mapIndexed { i, lhs -> multiply(lhs, right) }
         }
         return Expressions.multiply(left, right)
     }

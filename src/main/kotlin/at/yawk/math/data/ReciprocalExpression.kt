@@ -11,7 +11,7 @@ class ReciprocalExpression(child: Expression) : UnaryExpression(child) {
     }
 
     override fun equals(other: Any?): Boolean {
-        return EqualsHelper.equals<AbsoluteValueExpression>(other, { it.child == child })
+        return EqualsHelper.equals<ReciprocalExpression>(other, { it.child == child })
     }
 
     override fun hashCode(): Int {

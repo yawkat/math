@@ -51,7 +51,12 @@ object ExpressionParser {
                 }
             }
 
-            is MathParser.MathContext -> return onlyChildToExpression(tree)
+            is MathParser.MathContext -> {
+                assert(tree.childCount == 2, { tree.childCount })
+                val last = tree.children[1]
+                assert(last is TerminalNode && last.symbol.type == MathParser.EOF)
+                return toExpression(tree.children[0])
+            }
             is MathParser.ExpressionClosedContext -> return onlyChildToExpression(tree)
             is MathParser.ExpressionOpenContext -> return onlyChildToExpression(tree)
             is MathParser.ExpressionOpenHighPriorityContext -> return onlyChildToExpression(tree)
@@ -74,8 +79,8 @@ object ExpressionParser {
         return expression
     }
 
-    private fun onlyChildToExpression(tree: RuleContext): Expression {
-        assert(tree.childCount == 1)
+    internal fun onlyChildToExpression(tree: RuleContext): Expression {
+        assert(tree.childCount == 1, { tree.childCount })
         return toExpression(tree.getChild(0))
     }
 }

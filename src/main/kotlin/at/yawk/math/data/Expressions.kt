@@ -53,4 +53,16 @@ object Expressions {
     fun abs(expression: Expression): Expression {
         return AbsoluteValueExpression(expression)
     }
+
+    fun gcd(a: Expression, b: Expression): Expression {
+        return GcdExpression(a, b)
+    }
+
+    fun lcm(a: Expression, b: Expression): Expression {
+        return LcmExpression(a, b)
+    }
+
+    fun dotProduct(a: Expression, b: Expression): Expression {
+        return DotProductExpression(a, b)
+    }
 }

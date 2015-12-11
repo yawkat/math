@@ -8,6 +8,9 @@ import at.yawk.math.data.Expressions.multiply
 import at.yawk.math.data.Expressions.rational
 import at.yawk.math.data.Expressions.subtract
 import at.yawk.math.data.Expressions.vector
+import at.yawk.math.data.Expressions.gcd
+import at.yawk.math.data.Expressions.lcm
+import at.yawk.math.data.Expressions.dotProduct
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
@@ -50,5 +53,14 @@ class RealExpressionFieldTest {
         assertEquals(
                 simplify(add(vector(listOf(int(1), int(2), int(3))), vector(listOf(int(2), int(3), int(4))))),
                 vector(listOf(int(3), int(5), int(7))))
+        assertEquals(
+                simplify(gcd(int(4), int(6))),
+                int(2))
+        assertEquals(
+                simplify(lcm(int(4), int(6))),
+                int(12))
+        assertEquals(
+                simplify(dotProduct(vector(listOf(int(1), int(2))), vector(listOf(int(3), int(4))))),
+                int(11))
     }
 }

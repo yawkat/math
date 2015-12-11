@@ -25,6 +25,40 @@ object RealExpressionField : ExpressionField {
                     }
                     is AdditionExpression -> return add(expression.left, expression.right)
                     is MultiplicationExpression -> return multiply(expression.left, expression.right)
+                    is GcdExpression -> {
+                        if (expression.left is IntegerExpression && expression.left.positive &&
+                                expression.right is IntegerExpression && expression.right.positive) {
+                            return GcdSolver.gcd(expression.left, expression.right)
+                        } else {
+                            return expression
+                        }
+                    }
+                    is LcmExpression -> {
+                        if (expression.left is IntegerExpression && expression.left.positive &&
+                                expression.right is IntegerExpression && expression.right.positive) {
+                            return LcmSolver.lcm(expression.left, expression.right)
+                        } else {
+                            return expression
+                        }
+                    }
+                    is DotProductExpression -> {
+                        if (expression.left is Vector && expression.right is Vector
+                                && expression.left.dimension == expression.right.dimension
+                                && expression.left.dimension > 0) {
+                            var sum: Expression? = null
+                            expression.left.rows.forEachIndexed { i, lhs ->
+                                val rhs = expression.right.rows[i]
+                                if (sum == null) {
+                                    sum = multiply(lhs, rhs)
+                                } else {
+                                    sum = add(sum!!, multiply(lhs, rhs))
+                                }
+                            }
+                            return sum!!
+                        } else {
+                            return expression
+                        }
+                    }
                     else -> return expression
                 }
             }

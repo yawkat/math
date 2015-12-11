@@ -23,10 +23,10 @@ object RealExpressionField : ExpressionField {
                 }
             }
             is AdditionExpression -> {
-                return Expressions.add(simplify(expression.left), simplify(expression.right))
+                return add(simplify(expression.left), simplify(expression.right))
             }
             is MultiplicationExpression -> {
-                return Expressions.multiply(simplify(expression.left), simplify(expression.right))
+                return multiply(simplify(expression.left), simplify(expression.right))
             }
             else -> {
                 return expression
@@ -71,9 +71,7 @@ object RealExpressionField : ExpressionField {
             }
             if (right is Rational) {
                 return divideNumber(
-                        multiply(
-                                left,
-                                right.numerator) as RealNumberExpression,
+                        multiply(left, right.numerator) as RealNumberExpression,
                         right.denominator)
             }
         }
@@ -124,8 +122,13 @@ object RealExpressionField : ExpressionField {
     }
 }
 
-internal class Rational(val numerator: RealNumberExpression, val denominator: RealNumberExpression)
+internal class Rational(numerator: RealNumberExpression, denominator: RealNumberExpression)
 : MultiplicationExpression(numerator, Expressions.reciprocal(denominator)), RealNumberExpression {
+    val numerator: RealNumberExpression
+        get() = left as RealNumberExpression
+    val denominator: RealNumberExpression
+        get() = (right as ReciprocalExpression).child as RealNumberExpression
+
     override val zero: Boolean
         get() {
             return numerator.zero
@@ -150,13 +153,5 @@ internal class Rational(val numerator: RealNumberExpression, val denominator: Re
 
     override fun toString(radix: Int): String {
         return "($numerator) / ($denominator)"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        return EqualsHelper.equals<Rational>(other, { it.denominator == denominator && it.numerator == numerator })
-    }
-
-    override fun hashCode(): Int {
-        return EqualsHelper.hashCode(numerator, denominator)
     }
 }

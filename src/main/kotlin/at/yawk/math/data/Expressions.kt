@@ -7,8 +7,8 @@ import java.math.BigInteger
  */
 object Expressions {
     val zero = int(0)
-    val one = int(0)
-    val minusOne = int(0)
+    val one = int(1)
+    val minusOne = int(-1)
 
     fun add(a: Expression, b: Expression): Expression {
         return AdditionExpression(a, b)

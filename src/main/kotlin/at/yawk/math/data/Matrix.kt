@@ -30,4 +30,11 @@ class Matrix(val columns: List<Vector>) : BaseExpression() {
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(columns)
     }
+
+    override fun visit(visitor: ExpressionVisitor): Expression {
+        return visitComposite(visitor, this, {
+            val newColumns = visitList(columns, visitor)
+            if (newColumns == null) this else Matrix(columns)
+        })
+    }
 }

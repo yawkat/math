@@ -20,4 +20,8 @@ class GeneratedVariableExpression : BaseExpression() {
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(id)
     }
+
+    override fun visit(visitor: ExpressionVisitor): Expression {
+        return visitor.visitSingleExpression(this)
+    }
 }

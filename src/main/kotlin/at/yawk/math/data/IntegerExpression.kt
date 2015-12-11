@@ -27,4 +27,8 @@ class IntegerExpression internal constructor(val value: BigInteger) : BaseExpres
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(value)
     }
+
+    override fun visit(visitor: ExpressionVisitor): Expression {
+        return visitor.visitSingleExpression(this)
+    }
 }

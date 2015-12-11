@@ -17,4 +17,8 @@ class AdditionExpression(left: Expression, right: Expression) : BinaryExpression
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(left, right)
     }
+
+    protected override fun withChildren(left: Expression, right: Expression): BinaryExpression {
+        return AdditionExpression(left, right)
+    }
 }

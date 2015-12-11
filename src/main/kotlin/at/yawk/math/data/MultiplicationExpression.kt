@@ -17,4 +17,8 @@ open class MultiplicationExpression(left: Expression, right: Expression) : Binar
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(left, right)
     }
+
+    protected override fun withChildren(left: Expression, right: Expression): BinaryExpression {
+        return MultiplicationExpression(left, right)
+    }
 }

@@ -17,4 +17,8 @@ class Inequation(left: Expression, val equality: Equality, right: Expression) : 
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(left, equality, right)
     }
+
+    protected override fun withChildren(left: Expression, right: Expression): BinaryExpression {
+        return Inequation(left, equality, right)
+    }
 }

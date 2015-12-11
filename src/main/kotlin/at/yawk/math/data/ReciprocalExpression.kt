@@ -17,4 +17,8 @@ class ReciprocalExpression(child: Expression) : UnaryExpression(child) {
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(child)
     }
+
+    protected override fun withChild(child: Expression): UnaryExpression {
+        return ReciprocalExpression(child)
+    }
 }

@@ -1,6 +1,5 @@
 package at.yawk.math.algorithm
 
-import at.yawk.math.EqualsHelper
 import at.yawk.math.data.*
 import java.math.BigInteger
 
@@ -8,30 +7,28 @@ import java.math.BigInteger
  * @author yawkat
  */
 object RealExpressionField : ExpressionField {
-    override fun simplify(vector: Vector): Vector {
-        return vector.map { simplify(it) }
-    }
-
     override fun simplify(expression: Expression): Expression {
-        when (expression) {
-            is ReciprocalExpression -> {
-                val child = simplify(expression.child)
-                if (child is RealNumberExpression) {
-                    return Rational(Expressions.one, child)
-                } else {
-                    return Expressions.reciprocal(child)
+        return expression.visit(object : ExpressionVisitor {
+            override fun postEnterExpression(expression: Expression): Expression {
+                return visitSingleExpression(expression)
+            }
+
+            override fun visitSingleExpression(expression: Expression): Expression {
+                when (expression) {
+                    is ReciprocalExpression -> {
+                        val child = expression.child
+                        if (child is RealNumberExpression) {
+                            return Rational(Expressions.one, child)
+                        } else {
+                            return expression
+                        }
+                    }
+                    is AdditionExpression -> return add(expression.left, expression.right)
+                    is MultiplicationExpression -> return multiply(expression.left, expression.right)
+                    else -> return expression
                 }
             }
-            is AdditionExpression -> {
-                return add(simplify(expression.left), simplify(expression.right))
-            }
-            is MultiplicationExpression -> {
-                return multiply(simplify(expression.left), simplify(expression.right))
-            }
-            else -> {
-                return expression
-            }
-        }
+        })
     }
 
     private fun add(left: Expression, right: Expression): Expression {

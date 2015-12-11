@@ -28,4 +28,11 @@ class Vector(val rows: List<Expression>) : BaseExpression() {
     override fun hashCode(): Int {
         return EqualsHelper.hashCode(rows)
     }
+
+    override fun visit(visitor: ExpressionVisitor): Expression {
+        return visitComposite(visitor, this, {
+            val newRows = visitList(rows, visitor)
+            if (newRows == null) this else Vector(rows)
+        })
+    }
 }

@@ -26,26 +26,24 @@ public class LinearEquationSolver {
         Vector lastRow = step.rows.get(lastRowIndex);
         int toCalculateIndex = 0;
         while (toCalculateIndex < lastRow.getDimension() &&
-               isZero(lastRow.getExpressions().get(toCalculateIndex))) {
+               isZero(lastRow.getRows().get(toCalculateIndex))) {
             toCalculateIndex++;
         }
         if (toCalculateIndex >= lastRow.getDimension() - 1) {
             // simple condition - x1*0 + ... + xn*0 == p -> p == 0
-            Expression lastExpression = lastRow.getExpressions().get(lastRow.getDimension() - 1);
+            Expression lastExpression = lastRow.getRows().get(lastRow.getDimension() - 1);
             solveStepRow(
                     step.removeRow(lastRowIndex)
-                            .withCondition(new Inequation(lastExpression,
-                                                          Inequation.Equality.EQUAL,
-                                                          Expressions.integer(0)))
+                            .withCondition(new Inequation(lastExpression, Equality.EQUAL, Expressions.zero))
             );
             return;
         }
 
-        if (lastRow)
+        // todo
     }
 
     private boolean isZero(Expression expression) {
-        return expression instanceof NumberExpression && ((NumberExpression) expression).isZero();
+        return expression instanceof NumberExpression && ((NumberExpression) expression).getZero();
     }
 
     @Value

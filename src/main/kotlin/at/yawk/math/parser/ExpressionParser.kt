@@ -3,19 +3,39 @@ package at.yawk.math.parser
 import at.yawk.math.algorithm.RealExpressionField
 import at.yawk.math.data.Expression
 import at.yawk.math.data.Expressions
+import at.yawk.math.data.Vector
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.math.BigInteger
 
 fun main(args: Array<String>) {
-    print(RealExpressionField.simplify(ExpressionParser.parse("1 + 2 * 3 / 3")))
+    val expressionParser = ExpressionParser()
+    expressionParser.addDefaultFunctions()
+    print(RealExpressionField.simplify(expressionParser.parse("dotp((1,2), (2,3))")))
 }
 
 /**
  * @author yawkat
  */
-object ExpressionParser {
+class ExpressionParser {
+    public val functions: MutableMap<String, (List<Expression>) -> Expression> = hashMapOf()
+    public val variables: MutableMap<String, Expression> = hashMapOf()
+
+    fun addDefaultFunctions() {
+        fun makeBiFunction(factory: (Expression, Expression) -> Expression): (List<Expression>) -> Expression {
+            return {
+                if (it.size != 2) throw IllegalArgumentException("Function requires exactly two arguments")
+                factory.invoke(it[0], it[1])
+            }
+        }
+
+        functions["gcd"] = makeBiFunction { a, b -> Expressions.gcd(a, b) }
+        functions["lcm"] = makeBiFunction { a, b -> Expressions.lcm(a, b) }
+        functions["dotp"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
+        functions["dotproduct"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
+    }
+
     fun parse(input: String): Expression {
         val lexer = MathLexer(ANTLRInputStream(input))
         val parser = MathParser(CommonTokenStream(lexer))
@@ -49,6 +69,18 @@ object ExpressionParser {
                         return Expressions.int(BigInteger(tree.text))
                     }
                 }
+            }
+
+            is MathParser.VariableAccessContext -> {
+                return variables[tree.name.text] ?: throw IllegalArgumentException("No variable for name ${tree.name}")
+            }
+            is MathParser.FunctionCallContext -> {
+                val f = functions[tree.name.text] ?: throw IllegalArgumentException("No function for name ${tree.name}")
+                return f.invoke(tree.parameters.map { toExpression(it) })
+            }
+
+            is MathParser.VectorContext -> {
+                return Vector(tree.rows.map { toExpression(it) })
             }
 
             is MathParser.MathContext -> {

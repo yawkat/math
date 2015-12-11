@@ -7,9 +7,9 @@ math: expressionOpen EOF;
 VariableName: 'a'..'z'+;
 Integer: '0'..'9'+;
 
-vector : '(' (expressionOpen ',')+ expressionOpen ')';
-functionCall : VariableName '(' ((expressionOpen ',')+ expressionOpen)? ')';
-variableAccess : VariableName;
+vector : '(' (rows+=expressionOpen ',')+ rows+=expressionOpen ')';
+functionCall : name=VariableName '(' ((parameters+=expressionOpen ',')+ parameters+=expressionOpen)? ')';
+variableAccess : name=VariableName;
 expressionClosed : '(' expressionOpen ')' | Integer | functionCall | variableAccess | vector;
 
 expressionOpen : expressionOpenLowPriority;

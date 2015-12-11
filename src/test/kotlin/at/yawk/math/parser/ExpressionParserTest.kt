@@ -11,14 +11,14 @@ class ExpressionParserTest {
     @Test
     fun testParse() {
         Assert.assertEquals(
-                ExpressionParser.parse("1 + 2"),
+                ExpressionParser().parse("1 + 2"),
                 Expressions.add(
                         Expressions.int(1),
                         Expressions.int(2)
                 )
         )
         Assert.assertEquals(
-                ExpressionParser.parse("1 + 2 * 3 / 3"),
+                ExpressionParser().parse("1 + 2 * 3 / 3"),
                 Expressions.add(
                         Expressions.int(1),
                         Expressions.divide(

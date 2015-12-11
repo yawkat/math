@@ -15,7 +15,6 @@ import org.testng.annotations.Test
  */
 class RealExpressionFieldTest {
     @Test
-    @Throws(Exception::class)
     fun testSimplify() {
         assertEquals(
                 simplify(add(int(1), int(2))),
@@ -41,5 +40,8 @@ class RealExpressionFieldTest {
         assertEquals(
                 simplify(divide(rational(1, 2), int(5))),
                 rational(1, 10))
+        assertEquals(
+                simplify(divide(int(2), int(1))),
+                int(2))
     }
 }

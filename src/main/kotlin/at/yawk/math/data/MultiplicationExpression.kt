@@ -7,7 +7,7 @@ import at.yawk.math.EqualsHelper
  */
 open class MultiplicationExpression(left: Expression, right: Expression) : BinaryExpression(left, right) {
     override fun toString(lhs: String, rhs: String): String {
-        return "$lhs * $rhs"
+        return "($lhs) * ($rhs)"
     }
 
     override fun equals(other: Any?): Boolean {

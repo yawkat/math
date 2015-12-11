@@ -5,7 +5,7 @@ import at.yawk.math.EqualsHelper
 /**
  * @author yawkat
  */
-data class Vector(val rows: List<Expression>) : Expression {
+class Vector(val rows: List<Expression>) : BaseExpression() {
     val dimension: Int
         get() = rows.size
 

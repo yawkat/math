@@ -5,7 +5,7 @@ import at.yawk.math.EqualsHelper
 /**
  * @author yawkat
  */
-class Matrix(val columns: List<Vector>) : Expression {
+class Matrix(val columns: List<Vector>) : BaseExpression() {
     val height: Int
     val width: Int
         get() = columns.size

@@ -3,7 +3,7 @@ package at.yawk.math.data
 /**
  * @author yawkat
  */
-abstract class UnaryExpression(val child: Expression) : Expression {
+abstract class UnaryExpression(val child: Expression) : BaseExpression() {
     protected abstract fun toString(content: String): String
 
     override fun toString(radix: Int): String {

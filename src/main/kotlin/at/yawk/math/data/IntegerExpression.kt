@@ -6,7 +6,7 @@ import java.math.BigInteger
 /**
  * @author yawkat
  */
-data class IntegerExpression internal constructor(val value: BigInteger) : RealNumberExpression {
+class IntegerExpression internal constructor(val value: BigInteger) : BaseExpression(), RealNumberExpression {
     override val positive: Boolean
         get() = value.signum() == 1
     override val negative: Boolean

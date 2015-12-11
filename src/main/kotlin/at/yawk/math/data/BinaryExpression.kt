@@ -3,7 +3,7 @@ package at.yawk.math.data
 /**
  * @author yawkat
  */
-abstract class BinaryExpression(val left: Expression, val right: Expression) : Expression {
+abstract class BinaryExpression(val left: Expression, val right: Expression) : BaseExpression() {
     protected abstract fun toString(lhs: String, rhs: String): String
 
     override fun toString(radix: Int): String {

@@ -6,7 +6,7 @@ import java.util.*
 /**
  * @author yawkat
  */
-class GeneratedVariableExpression : Expression {
+class GeneratedVariableExpression : BaseExpression() {
     private val id = UUID.randomUUID()
 
     override fun toString(radix: Int): String {

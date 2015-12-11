@@ -15,7 +15,7 @@ class DotProductExpression(left: Expression, right: Expression) : BinaryExpressi
     }
 
     override fun withChildren(left: Expression, right: Expression): BinaryExpression {
-        return GcdExpression(left, right)
+        return DotProductExpression(left, right)
     }
 
     override fun toString(lhs: String, rhs: String): String {

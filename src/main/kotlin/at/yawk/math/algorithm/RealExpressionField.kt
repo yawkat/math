@@ -2,6 +2,10 @@ package at.yawk.math.algorithm
 
 import at.yawk.math.data.*
 import java.math.BigInteger
+import kotlin.math.div
+import kotlin.math.plus
+import kotlin.math.times
+import kotlin.math.unaryMinus
 
 /**
  * @author yawkat
@@ -16,17 +20,23 @@ object RealExpressionField : ExpressionField {
             override fun visitSingleExpression(expression: Expression): Expression {
                 when (expression) {
                     is ExponentiationExpression -> {
-                        if (expression.exponent == Expressions.minusOne &&
-                                expression.base is RealNumberExpression) {
-                            return Rational(Expressions.one, expression.base as RealNumberExpression)
-                        } else if (expression.exponent == Expressions.one) {
-                            return expression.base
-                        } else {
-                            return expression
+                        val base = expression.base
+                        if (expression.exponent == Expressions.minusOne) {
+                            if (base is IntegerExpression) {
+                                return Rational(Expressions.one, base)
+                            }
+                            if (base is Rational) {
+                                return Rational(base.denominator, base.numerator)
+                            }
                         }
+                        // todo: RationalExponentProduct
+                        if (expression.exponent == Expressions.one) {
+                            return base
+                        }
+                        return expression
                     }
-                    is AdditionExpression -> return add(expression.left, expression.right)
-                    is MultiplicationExpression -> return multiply(expression.left, expression.right)
+                    is AdditionExpression -> return add(expression.components)
+                    is MultiplicationExpression -> return multiply(expression.components)
                     is GcdExpression -> {
                         if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
                                 expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
@@ -51,9 +61,9 @@ object RealExpressionField : ExpressionField {
                             expression.left.rows.forEachIndexed { i, lhs ->
                                 val rhs = expression.right.rows[i]
                                 if (sum == null) {
-                                    sum = multiply(lhs, rhs)
+                                    sum = multiply(listOf(lhs, rhs))
                                 } else {
-                                    sum = add(sum!!, multiply(lhs, rhs))
+                                    sum = add(listOf(sum!!, multiply(listOf(lhs, rhs))))
                                 }
                             }
                             return simplify(sum!!)
@@ -67,103 +77,117 @@ object RealExpressionField : ExpressionField {
         })
     }
 
-    private fun add(left: Expression, right: Expression): Expression {
-        if (left is IntegerExpression) {
-            if (right is IntegerExpression) {
-                return Expressions.int(left.value.add(right.value))
-            }
-            if (right is Rational) {
-                return divideNumber(
-                        add(
-                                multiply(left, right.denominator),
-                                right.numerator
-                        ) as RealNumberExpression,
-                        right.denominator)
-            }
-        }
-        if (left is Rational) {
-            if (right is IntegerExpression) {
-                return add(right, left)
-            }
-            if (right is Rational) {
-                // a/b + c/d = (a*d + c*b)/(b*d)
-                return divideNumber(
-                        add(
-                                multiply(left.numerator, right.denominator),
-                                multiply(right.numerator, left.denominator)) as RealNumberExpression,
-                        multiply(left.denominator, right.denominator) as RealNumberExpression)
-            }
-        }
-        if (left is Vector) {
-            if (right is Vector) {
-                return left.mapIndexed { i, lhs -> add(lhs, right.rows[i]) }
-            }
-        }
-        return Expressions.add(left, right)
-    }
+    private fun add(expressions: List<Expression>): Expression {
+        val newExpressions = arrayListOf<Expression>()
 
-    private fun multiply(left: Expression, right: Expression): Expression {
-        if (left is IntegerExpression) {
-            if (right is IntegerExpression) {
-                return Expressions.int(left.value.multiply(right.value))
-            }
-            if (right is Rational) {
-                return divideNumber(
-                        multiply(left, right.numerator) as RealNumberExpression,
-                        right.denominator)
-            }
-        }
-        if (left is Rational) {
-            if (right is IntegerExpression) {
-                return multiply(right, left)
-            }
-            if (right is Rational) {
-                return divideNumber(
-                        multiply(left.numerator, right.numerator) as RealNumberExpression,
-                        multiply(left.denominator, right.denominator) as RealNumberExpression)
-            }
-        }
-        if (left is Vector) {
-            return left.mapIndexed { i, lhs -> multiply(lhs, right) }
-        }
-        return Expressions.multiply(left, right)
-    }
-
-    private fun divideNumber(numerator: RealNumberExpression, denominator: RealNumberExpression): RealNumberExpression {
-        var newNumerator = numerator
-        var newDenominator = denominator
-        // optimizations
-        while (true) {
-            if (newNumerator is Rational) {
-                // (a/b)/c = a/(b*c)
-                val oldNumerator = newNumerator
-                newNumerator = oldNumerator.numerator
-                newDenominator = multiply(oldNumerator.denominator, newDenominator) as RealNumberExpression
-                continue
-            }
-            if (newDenominator is Rational) {
-                // a/(b/c) = (a*c)/b
-                val oldDenominator = newDenominator
-                newDenominator = oldDenominator.numerator
-                newNumerator = multiply(newNumerator, oldDenominator.denominator) as RealNumberExpression
-                continue
-            }
-            if (newNumerator is IntegerExpression && newDenominator is IntegerExpression) {
-                val gcd = newNumerator.value.gcd(newDenominator.value)
-                // check gcd > 1
-                if (gcd != BigInteger.ONE && gcd.signum() != 0) {
-                    newNumerator = Expressions.int(newNumerator.value.divide(gcd))
-                    newDenominator = Expressions.int(newDenominator.value.divide(gcd))
-                    continue
+        // combine rationals
+        var numerator = BigInteger.ZERO
+        var denominator = BigInteger.ONE // always > 0
+        for (expression in expressions) {
+            when (expression) {
+                is IntegerExpression -> numerator += denominator * expression.value
+                is Rational -> {
+                    // a/b + c/d = (a*d+c*b)/(b*d)
+                    numerator = numerator * expression.denominator.value + expression.numerator.value * denominator
+                    denominator *= expression.denominator.value
+                    // ensure denominator > 0
+                    when (denominator.signum()) {
+                        0 -> {
+                            numerator = BigInteger.ZERO
+                            denominator = BigInteger.ONE
+                        }
+                        -1 -> {
+                            numerator = -numerator
+                            denominator = denominator.abs()
+                        }
+                    }
                 }
+                is Vector -> {
+                    var merged = false
+                    for (i in 0..newExpressions.size - 1) {
+                        val item = newExpressions[i]
+                        if (item is Vector && item.dimension == expression.dimension) {
+                            // we can merge these two vectors
+                            newExpressions[i] = item.mapIndexed { i, row -> add(listOf(row, expression.rows[i])) }
+                            merged = true
+                            break
+                        }
+                    }
+                    if (!merged) newExpressions.add(expression)
+                }
+            // todo: RationalExponentProduct
+                else -> newExpressions.add(expression)
             }
-            break
         }
-        // a / 1 = a
-        if (newDenominator is IntegerExpression && newDenominator.value.equals(BigInteger.ONE)) {
-            return newNumerator
+
+        val rational = makeRational(numerator, denominator)
+        if (rational != Expressions.zero) newExpressions.add(rational)
+
+        if (newExpressions.isEmpty()) return Expressions.zero
+        if (newExpressions.size == 1) return newExpressions[0]
+        return AdditionExpression(newExpressions)
+    }
+
+    private fun multiply(expressions: List<Expression>): Expression {
+        val newExpressions = arrayListOf<Expression>()
+        val newVectors = arrayListOf<Vector>()
+
+        // combine rationals
+        var numerator = BigInteger.ONE
+        var denominator = BigInteger.ONE // always > 0
+        for (expression in expressions) {
+            when (expression) {
+                is IntegerExpression -> numerator *= expression.value
+                is Rational -> {
+                    numerator *= expression.numerator.value
+                    denominator *= expression.denominator.value
+                    // ensure denominator > 0
+                    when (denominator.signum()) {
+                        0 -> {
+                            numerator = BigInteger.ONE
+                            denominator = BigInteger.ONE
+                        }
+                        -1 -> {
+                            numerator = -numerator
+                            denominator = denominator.abs()
+                        }
+                    }
+                }
+                is Vector -> newVectors.add(expression)
+            // todo: RationalExponentProduct
+                else -> newExpressions.add(expression)
+            }
         }
-        return Rational(newNumerator, newDenominator)
+
+        val rational = makeRational(numerator, denominator)
+        if (rational == Expressions.zero) return Expressions.zero
+
+        // merge rational and vectors
+        if (newVectors.isEmpty()) {
+            // no vectors - just append the rational
+            if (rational != Expressions.one) {
+                newExpressions.add(rational)
+            }
+        } else {
+            // at least one vector - merge the rational into the vector
+            newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, rational)) } })
+        }
+
+        if (newExpressions.isEmpty()) return Expressions.one
+        if (newExpressions.size == 1) return newExpressions[0]
+        return MultiplicationExpression(newExpressions)
+    }
+
+    private fun makeRational(numerator: BigInteger, denominator: BigInteger): RealNumberExpression {
+        assert(denominator.signum() == 1)
+        if (numerator == BigInteger.ZERO) return Expressions.zero
+
+        val gcd = numerator.gcd(denominator)
+        if (gcd == denominator) {
+            return Expressions.int(numerator / gcd)
+        } else {
+            return Expressions.rational(numerator / gcd, denominator / gcd)
+        }
     }
 }
 

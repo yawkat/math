@@ -10,12 +10,12 @@ object Expressions {
     val one = int(1)
     val minusOne = int(-1)
 
-    fun add(a: Expression, b: Expression): Expression {
-        return AdditionExpression(a, b)
+    fun add(vararg a: Expression): Expression {
+        return AdditionExpression(listOf(*a))
     }
 
-    fun multiply(a: Expression, b: Expression): Expression {
-        return MultiplicationExpression(a, b)
+    fun multiply(vararg a: Expression): Expression {
+        return MultiplicationExpression(listOf(*a))
     }
 
     fun subtract(minuend: Expression, subtrahend: Expression): Expression {
@@ -38,15 +38,19 @@ object Expressions {
         return Vector(rows)
     }
 
-    fun int(value: BigInteger): RealNumberExpression {
+    fun int(value: BigInteger): IntegerExpression {
         return IntegerExpression(value)
     }
 
-    fun int(value: Long): RealNumberExpression {
+    fun int(value: Long): IntegerExpression {
         return int(BigInteger.valueOf(value))
     }
 
     fun rational(numerator: Long, denominator: Long): Expression {
+        return Rational(int(numerator), int(denominator))
+    }
+
+    fun rational(numerator: BigInteger, denominator: BigInteger): Rational {
         return Rational(int(numerator), int(denominator))
     }
 

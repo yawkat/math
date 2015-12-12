@@ -14,7 +14,7 @@ class IntegerExpression internal constructor(val value: BigInteger) : BaseExpres
             -1 -> Sign.NEGATIVE
             else -> throw AssertionError()
         }
-    override val abs: RealNumberExpression
+    override val abs: IntegerExpression
         get() = if (sign == Sign.NEGATIVE) IntegerExpression(value.abs()) else this
     override val zero: Boolean
         get() = value.signum() == 0

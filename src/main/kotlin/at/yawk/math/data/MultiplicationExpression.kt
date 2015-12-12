@@ -5,20 +5,20 @@ import at.yawk.math.EqualsHelper
 /**
  * @author yawkat
  */
-open class MultiplicationExpression(left: Expression, right: Expression) : BinaryExpression(left, right) {
-    override fun toString(lhs: String, rhs: String): String {
-        return "($lhs) * ($rhs)"
+open class MultiplicationExpression(components: List<Expression>) : ChainExpression(components) {
+    override fun withComponents(components: List<Expression>): ChainExpression {
+        return MultiplicationExpression(components)
+    }
+
+    override fun toString(radix: Int): String {
+        return components.map { it.toString(radix) }.joinToString(" * ")
     }
 
     override fun equals(other: Any?): Boolean {
-        return EqualsHelper.equals<MultiplicationExpression>(other, { it.left == left && it.right == right })
+        return EqualsHelper.equals<MultiplicationExpression>(other, { it.components == components })
     }
 
     override fun hashCode(): Int {
-        return EqualsHelper.hashCode(left, right)
-    }
-
-    protected override fun withChildren(left: Expression, right: Expression): BinaryExpression {
-        return MultiplicationExpression(left, right)
+        return EqualsHelper.hashCode(components)
     }
 }

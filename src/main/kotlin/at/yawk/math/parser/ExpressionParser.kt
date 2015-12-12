@@ -1,9 +1,7 @@
 package at.yawk.math.parser
 
 import at.yawk.math.algorithm.RealExpressionField
-import at.yawk.math.data.Expression
-import at.yawk.math.data.Expressions
-import at.yawk.math.data.Vector
+import at.yawk.math.data.*
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
@@ -12,7 +10,7 @@ import java.math.BigInteger
 fun main(args: Array<String>) {
     val expressionParser = ExpressionParser()
     expressionParser.addDefaultFunctions()
-    print(RealExpressionField.simplify(expressionParser.parse("dotp((1,2), (2,3))")))
+    print(RealExpressionField.simplify(expressionParser.parse("pi^2")))
 }
 
 /**
@@ -34,6 +32,9 @@ class ExpressionParser {
         functions["lcm"] = makeBiFunction { a, b -> Expressions.lcm(a, b) }
         functions["dotp"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
         functions["dotproduct"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
+
+        variables["e"] = IrrationalConstant.E
+        variables["pi"] = IrrationalConstant.PI
     }
 
     fun parse(input: String): Expression {
@@ -81,6 +82,10 @@ class ExpressionParser {
 
             is MathParser.VectorContext -> {
                 return Vector(tree.rows.map { toExpression(it) })
+            }
+
+            is MathParser.ExponentiationContext -> {
+                return ExponentiationExpression(toExpression(tree.base), toExpression(tree.exponent))
             }
 
             is MathParser.MathContext -> {

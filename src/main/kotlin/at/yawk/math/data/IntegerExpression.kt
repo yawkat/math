@@ -7,12 +7,15 @@ import java.math.BigInteger
  * @author yawkat
  */
 class IntegerExpression internal constructor(val value: BigInteger) : BaseExpression(), RealNumberExpression {
-    override val positive: Boolean
-        get() = value.signum() == 1
-    override val negative: Boolean
-        get() = value.signum() == 1
+    override val sign: Sign
+        get() = when (value.signum()) {
+            0 -> Sign.ZERO
+            1 -> Sign.POSITIVE
+            -1 -> Sign.NEGATIVE
+            else -> throw AssertionError()
+        }
     override val abs: RealNumberExpression
-        get() = if (negative) IntegerExpression(value.negate()) else this
+        get() = if (sign == Sign.NEGATIVE) IntegerExpression(value.abs()) else this
     override val zero: Boolean
         get() = value.signum() == 0
 

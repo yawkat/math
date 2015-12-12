@@ -31,7 +31,7 @@ object Expressions {
     }
 
     fun reciprocal(a: Expression): Expression {
-        return ReciprocalExpression(a)
+        return ExponentiationExpression(a, minusOne)
     }
 
     fun vector(rows: List<Expression>): Expression {
@@ -47,7 +47,7 @@ object Expressions {
     }
 
     fun rational(numerator: Long, denominator: Long): Expression {
-        return divide(int(numerator), int(denominator))
+        return Rational(int(numerator), int(denominator))
     }
 
     fun abs(expression: Expression): Expression {

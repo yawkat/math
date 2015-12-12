@@ -15,10 +15,12 @@ object RealExpressionField : ExpressionField {
 
             override fun visitSingleExpression(expression: Expression): Expression {
                 when (expression) {
-                    is ReciprocalExpression -> {
-                        val child = expression.child
-                        if (child is RealNumberExpression) {
-                            return Rational(Expressions.one, child)
+                    is ExponentiationExpression -> {
+                        if (expression.exponent == Expressions.minusOne &&
+                                expression.base is RealNumberExpression) {
+                            return Rational(Expressions.one, expression.base as RealNumberExpression)
+                        } else if (expression.exponent == Expressions.one) {
+                            return expression.base
                         } else {
                             return expression
                         }
@@ -26,16 +28,16 @@ object RealExpressionField : ExpressionField {
                     is AdditionExpression -> return add(expression.left, expression.right)
                     is MultiplicationExpression -> return multiply(expression.left, expression.right)
                     is GcdExpression -> {
-                        if (expression.left is IntegerExpression && expression.left.positive &&
-                                expression.right is IntegerExpression && expression.right.positive) {
+                        if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
+                                expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
                             return GcdSolver.gcd(expression.left, expression.right)
                         } else {
                             return expression
                         }
                     }
                     is LcmExpression -> {
-                        if (expression.left is IntegerExpression && expression.left.positive &&
-                                expression.right is IntegerExpression && expression.right.positive) {
+                        if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
+                                expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
                             return LcmSolver.lcm(expression.left, expression.right)
                         } else {
                             return expression
@@ -165,36 +167,3 @@ object RealExpressionField : ExpressionField {
     }
 }
 
-internal class Rational(numerator: RealNumberExpression, denominator: RealNumberExpression)
-: MultiplicationExpression(numerator, Expressions.reciprocal(denominator)), RealNumberExpression {
-    val numerator: RealNumberExpression
-        get() = left as RealNumberExpression
-    val denominator: RealNumberExpression
-        get() = (right as ReciprocalExpression).child as RealNumberExpression
-
-    override val zero: Boolean
-        get() {
-            return numerator.zero
-        }
-
-    override val positive: Boolean
-        get() = if (numerator.positive) {
-            denominator.positive
-        } else {
-            !zero && denominator.negative
-        }
-
-    override val negative: Boolean
-        get() = if (numerator.positive) {
-            denominator.negative
-        } else {
-            !zero && denominator.positive
-        }
-
-    override val abs: RealNumberExpression
-        get() = Rational(numerator.abs, denominator.abs)
-
-    override fun toString(radix: Int): String {
-        return "($numerator) / ($denominator)"
-    }
-}

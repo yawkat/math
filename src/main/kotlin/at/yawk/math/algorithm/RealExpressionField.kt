@@ -59,7 +59,7 @@ object RealExpressionField : ExpressionField {
                                 && expression.left.dimension > 0) {
                             var sum: Expression? = null
                             expression.left.rows.forEachIndexed { i, lhs ->
-                                val rhs = expression.right.rows[i]
+                                val rhs = expression.right[i]
                                 if (sum == null) {
                                     sum = multiply(listOf(lhs, rhs))
                                 } else {
@@ -81,34 +81,18 @@ object RealExpressionField : ExpressionField {
         val newExpressions = arrayListOf<Expression>()
 
         // combine rationals
-        var numerator = BigInteger.ZERO
-        var denominator = BigInteger.ONE // always > 0
+        var local: LocalRational = LocalRational.ZERO
         for (expression in expressions) {
             when (expression) {
-                is IntegerExpression -> numerator += denominator * expression.value
-                is Rational -> {
-                    // a/b + c/d = (a*d+c*b)/(b*d)
-                    numerator = numerator * expression.denominator.value + expression.numerator.value * denominator
-                    denominator *= expression.denominator.value
-                    // ensure denominator > 0
-                    when (denominator.signum()) {
-                        0 -> {
-                            numerator = BigInteger.ZERO
-                            denominator = BigInteger.ONE
-                        }
-                        -1 -> {
-                            numerator = -numerator
-                            denominator = denominator.abs()
-                        }
-                    }
-                }
+                is IntegerExpression -> local += expression
+                is Rational -> local += expression
                 is Vector -> {
                     var merged = false
                     for (i in 0..newExpressions.size - 1) {
                         val item = newExpressions[i]
                         if (item is Vector && item.dimension == expression.dimension) {
                             // we can merge these two vectors
-                            newExpressions[i] = item.mapIndexed { i, row -> add(listOf(row, expression.rows[i])) }
+                            newExpressions[i] = item.mapIndexed { i, row -> add(listOf(row, expression[i])) }
                             merged = true
                             break
                         }
@@ -120,8 +104,7 @@ object RealExpressionField : ExpressionField {
             }
         }
 
-        val rational = makeRational(numerator, denominator)
-        if (rational != Expressions.zero) newExpressions.add(rational)
+        if (local != LocalRational.ZERO) newExpressions.add(local.toReal())
 
         if (newExpressions.isEmpty()) return Expressions.zero
         if (newExpressions.size == 1) return newExpressions[0]
@@ -133,44 +116,29 @@ object RealExpressionField : ExpressionField {
         val newVectors = arrayListOf<Vector>()
 
         // combine rationals
-        var numerator = BigInteger.ONE
-        var denominator = BigInteger.ONE // always > 0
+        var local: LocalRational = LocalRational.ONE
         for (expression in expressions) {
             when (expression) {
-                is IntegerExpression -> numerator *= expression.value
-                is Rational -> {
-                    numerator *= expression.numerator.value
-                    denominator *= expression.denominator.value
-                    // ensure denominator > 0
-                    when (denominator.signum()) {
-                        0 -> {
-                            numerator = BigInteger.ONE
-                            denominator = BigInteger.ONE
-                        }
-                        -1 -> {
-                            numerator = -numerator
-                            denominator = denominator.abs()
-                        }
-                    }
-                }
+                is IntegerExpression -> local *= expression
+                is Rational -> local *= expression
                 is Vector -> newVectors.add(expression)
             // todo: RationalExponentProduct
                 else -> newExpressions.add(expression)
             }
         }
 
-        val rational = makeRational(numerator, denominator)
-        if (rational == Expressions.zero) return Expressions.zero
+        if (local == LocalRational.ZERO) return Expressions.zero
 
+        val realFactor = local.toReal()
         // merge rational and vectors
         if (newVectors.isEmpty()) {
             // no vectors - just append the rational
-            if (rational != Expressions.one) {
-                newExpressions.add(rational)
+            if (realFactor != Expressions.one) {
+                newExpressions.add(realFactor)
             }
         } else {
             // at least one vector - merge the rational into the vector
-            newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, rational)) } })
+            newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, realFactor)) } })
         }
 
         if (newExpressions.isEmpty()) return Expressions.one
@@ -191,3 +159,65 @@ object RealExpressionField : ExpressionField {
     }
 }
 
+internal data class LocalRational(val numerator: BigInteger, val denominator: BigInteger) {
+    companion object {
+        val ZERO = LocalRational(BigInteger.ZERO, BigInteger.ONE)
+        val ONE = LocalRational(BigInteger.ONE, BigInteger.ONE)
+    }
+
+    fun normalize(): LocalRational {
+        if (numerator == BigInteger.ZERO) {
+            return ZERO
+        }
+        if (numerator == BigInteger.ONE && denominator == BigInteger.ONE) {
+            return ONE
+        }
+        // ensure denominator > 0
+        if (denominator.signum() == -1) {
+            return LocalRational(-numerator, -denominator).normalize()
+        }
+        val gcd = numerator.gcd(denominator)
+        if (gcd > BigInteger.ONE) {
+            return LocalRational(numerator / gcd, denominator / gcd).normalize()
+        }
+        return this
+    }
+
+    fun toReal(): RealNumberExpression {
+        if (numerator == BigInteger.ZERO) {
+            return Expressions.zero
+        } else if (denominator == BigInteger.ONE) {
+            return Expressions.int(numerator)
+        } else {
+            return Rational(Expressions.int(numerator), Expressions.int(denominator))
+        }
+    }
+
+    operator fun plus(int: IntegerExpression): LocalRational {
+        return LocalRational(
+                numerator + int.value * denominator,
+                denominator
+        ).normalize()
+    }
+
+    operator fun plus(rational: Rational): LocalRational {
+        return LocalRational(
+                numerator * rational.denominator.value + rational.numerator.value * denominator,
+                denominator * rational.denominator.value
+        ).normalize()
+    }
+
+    operator fun times(int: IntegerExpression): LocalRational {
+        return LocalRational(
+                numerator * int.value,
+                denominator
+        ).normalize()
+    }
+
+    operator fun times(rational: Rational): LocalRational {
+        return LocalRational(
+                numerator * rational.numerator.value,
+                denominator * rational.denominator.value
+        ).normalize()
+    }
+}

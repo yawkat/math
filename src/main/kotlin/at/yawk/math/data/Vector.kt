@@ -35,4 +35,8 @@ class Vector(val rows: List<Expression>) : BaseExpression() {
             if (newRows == null) this else Vector(rows)
         })
     }
+
+    operator fun get(i: Int): Expression {
+        return rows[i]
+    }
 }

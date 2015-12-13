@@ -44,25 +44,35 @@ object PrimeFactorSolver {
         return result
     }
 
+    fun factorize(expr: IntegerExpression): FactorizationResult = factorize(expr.value)
+
     /**
      * Attempt to factorize the given integer. The result may contain a non-prime as its last element if the number is too large.
      */
-    fun factorize(expr: IntegerExpression): List<IntegerExpression> {
-        if (expr.value <= BigInteger.ONE) throw IllegalArgumentException("Number must be larger than 1")
+    fun factorize(expr: BigInteger): FactorizationResult {
+        if (expr <= BigInteger.ONE) throw IllegalArgumentException("Number must be larger than 1")
 
-        val factorization = arrayListOf<IntegerExpression>()
+        val factorization = hashMapOf<Int, Int>()
 
-        var num = expr.value
+        var num = expr
         for (prime in FACTORIZATION_PRIMES) {
             val primeBI = BigInteger.valueOf(prime.toLong())
+            var matches = 0
             while (num % primeBI == BigInteger.ZERO) {
-                factorization.add(IntegerExpression(primeBI))
+                matches++
                 num /= primeBI
             }
+            if (matches > 0) factorization[prime] = matches
         }
 
-        if (num != BigInteger.ONE) factorization.add(IntegerExpression(num))
-
-        return factorization
+        return FactorizationResult(factorization, num)
     }
+}
+
+/**
+ * A factorization result. [primeFactors] is a prime->count map describing how often a given prime appeared in the factorization.
+ * [remainder] is the remaining probable non-prime that was not factorized.
+ */
+data class FactorizationResult(val primeFactors: Map<Int, Int>, val remainder: BigInteger) {
+    fun hasRemainder() = remainder != BigInteger.ONE
 }

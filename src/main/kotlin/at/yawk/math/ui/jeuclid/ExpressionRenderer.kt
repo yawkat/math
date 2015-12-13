@@ -117,6 +117,7 @@ object ExpressionRenderer {
                 }
                 return row(nodes)
             }
+            is IrrationalConstant -> return text(expression.constantString)
             else -> return text(expression.toString(radix))
         }
     }

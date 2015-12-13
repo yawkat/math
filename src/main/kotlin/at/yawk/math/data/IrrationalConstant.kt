@@ -3,9 +3,9 @@ package at.yawk.math.data
 /**
  * @author yawkat
  */
-enum class IrrationalConstant(val constantName: String, val approximation: Double): RealNumberExpression {
-    PI("pi", Math.PI),
-    E("e", Math.E);
+enum class IrrationalConstant(val constantName: String, val constantString: String, val approximation: Double): RealNumberExpression {
+    PI("pi", "π", Math.PI),
+    E("e", "e", Math.E);
 
     override val sign: Sign
         get() = Sign.POSITIVE

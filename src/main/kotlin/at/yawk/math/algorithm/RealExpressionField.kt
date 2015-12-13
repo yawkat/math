@@ -90,12 +90,17 @@ object RealExpressionField : ExpressionField {
         }
     }
 
-    private fun add(expressions: List<Expression>): Expression {
-        val newExpressions = arrayListOf<Expression>()
+    private class Adder {
+        var local = LocalRational.ZERO
+        var newExpressions = arrayListOf<Expression>()
 
-        // combine rationals
-        var local: LocalRational = LocalRational.ZERO
-        for (expression in expressions) {
+        fun pushAll(expressions: List<Expression>) {
+            for (expression in expressions) {
+                push(expression)
+            }
+        }
+
+        fun push(expression: Expression) {
             when (expression) {
                 is IntegerExpression -> local += expression
                 is Rational -> local += expression
@@ -123,15 +128,29 @@ object RealExpressionField : ExpressionField {
                         newExpressions.add(expression)
                     }
                 }
+                is AdditionExpression -> pushAll(expression.components)
                 else -> newExpressions.add(expression)
             }
         }
 
-        if (local != LocalRational.ZERO) newExpressions.add(local.toRational())
+        fun flushLocal() {
+            if (local != LocalRational.ZERO) newExpressions.add(local.toRational())
+            local = LocalRational.ZERO
+        }
 
-        if (newExpressions.isEmpty()) return Expressions.zero
-        if (newExpressions.size == 1) return newExpressions[0]
-        return AdditionExpression(newExpressions)
+        fun toExpression(): Expression {
+            flushLocal()
+
+            if (newExpressions.isEmpty()) return Expressions.zero
+            if (newExpressions.size == 1) return newExpressions[0]
+            return AdditionExpression(newExpressions)
+        }
+    }
+
+    private fun add(expressions: List<Expression>): Expression {
+        val adder = Adder()
+        adder.pushAll(expressions)
+        return adder.toExpression()
     }
 
     private fun multiply(expressions: List<Expression>): Expression {

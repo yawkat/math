@@ -146,6 +146,13 @@ class RealExpressionFieldTest {
                 RationalExponentiation(IrrationalConstant.PI, Expressions.minusOne))
     }
 
+    @Test
+    fun testNestedAdd() {
+        assertEquals(
+                simplify(add(add(int(1), IrrationalConstant.PI), add(IrrationalConstant.E, int(2)))),
+                add(IrrationalConstant.PI, IrrationalConstant.E, int(3)))
+    }
+
     private fun rationalPow(vararg components: Pair<RealNumberExpression, Rational>): RationalExponentiationProduct {
         return RationalExponentiationProduct(
                 components.map { RationalExponentiation(it.first, it.second) })

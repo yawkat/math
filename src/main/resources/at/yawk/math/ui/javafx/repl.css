@@ -1,0 +1,14 @@
+.step {
+    -fx-padding: 3em;
+    -fx-spacing: 1em;
+    -fx-background-color: #fff;
+}
+.step .text-field {
+    -fx-border: none;
+    -fx-background-color: inherit;
+    -fx-padding: 0;
+}
+.step .result {
+    -fx-padding: 1em;
+    -fx-background-color: #eee;
+}

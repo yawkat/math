@@ -220,7 +220,12 @@ object RealExpressionField : ExpressionField {
     private fun safeIntegerExponentiation(base: IntegerExpression, exponent: Rational): IntegerExpression? {
         if (exponent == Expressions.one) return base // shortcut
         try {
+            // computation time limit: don't exceed 512 bits in exponentiation
+            if (base.value.bitCount() + exponent.numerator.value.intValueExact() > 512) return null
+
             val rootContent = base.value.pow(exponent.numerator.value.intValueExact())
+            // shortcut
+            if (exponent.denominator == Expressions.one) return IntegerExpression(rootContent)
             // check for even root of negative base (sqrt(-1))
             if (exponent.denominator.even && rootContent.signum() == -1) return null
             val result = safeRoot(rootContent, exponent.denominator.value) ?: return null

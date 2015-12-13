@@ -50,11 +50,11 @@ object Expressions {
     }
 
     fun rational(numerator: Long, denominator: Long): Rational {
-        return Rational(int(numerator), int(denominator))
+        return SimpleRational(int(numerator), int(denominator))
     }
 
     fun rational(numerator: BigInteger, denominator: BigInteger): Rational {
-        return Rational(int(numerator), int(denominator))
+        return SimpleRational(int(numerator), int(denominator))
     }
 
     fun abs(expression: Expression): Expression {
@@ -71,5 +71,9 @@ object Expressions {
 
     fun dotProduct(a: Expression, b: Expression): Expression {
         return DotProductExpression(a, b)
+    }
+
+    fun pow(base: Expression, exponent: Expression): Expression {
+        return ExponentiationExpression(base, exponent)
     }
 }

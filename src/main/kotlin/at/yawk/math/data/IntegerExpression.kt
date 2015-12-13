@@ -1,12 +1,11 @@
 package at.yawk.math.data
 
-import at.yawk.math.EqualsHelper
 import java.math.BigInteger
 
 /**
  * @author yawkat
  */
-class IntegerExpression internal constructor(val value: BigInteger) : BaseExpression(), RealNumberExpression, Comparable<IntegerExpression> {
+class IntegerExpression internal constructor(val value: BigInteger) : BaseExpression(), Rational {
     override val sign: Sign
         get() = when (value.signum()) {
             0 -> Sign.ZERO
@@ -21,7 +20,11 @@ class IntegerExpression internal constructor(val value: BigInteger) : BaseExpres
     override val zero: Boolean
         get() = value.signum() == 0
     override val reciprocal: Rational
-        get() = Rational(Expressions.one, this)
+        get() = SimpleRational(Expressions.one, this)
+    override val numerator: IntegerExpression
+        get() = this
+    override val denominator: IntegerExpression
+        get() = Expressions.one
 
     val even: Boolean
         get() = value.and(BigInteger.ONE) == BigInteger.ZERO
@@ -31,18 +34,22 @@ class IntegerExpression internal constructor(val value: BigInteger) : BaseExpres
     }
 
     override fun equals(other: Any?): Boolean {
-        return EqualsHelper.equals<IntegerExpression>(other, { it.value == value })
+        return rationalEquals(this, other)
     }
 
     override fun hashCode(): Int {
-        return EqualsHelper.hashCode(value)
+        return rationalHashcode(this)
     }
 
     override fun visit(visitor: ExpressionVisitor): Expression {
         return visitor.visitSingleExpression(this)
     }
 
-    operator override fun compareTo(other: IntegerExpression): Int {
-        return value.compareTo(other.value)
+    operator override fun compareTo(other: Rational): Int {
+        if (other is IntegerExpression) {
+            return value.compareTo(other.value)
+        } else {
+            return -other.compareTo(this)
+        }
     }
 }

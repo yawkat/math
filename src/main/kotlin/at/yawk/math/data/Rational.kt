@@ -3,35 +3,54 @@ package at.yawk.math.data
 import at.yawk.math.EqualsHelper
 import kotlin.math.times
 
-class Rational(val numerator: IntegerExpression, val denominator: IntegerExpression)
-: BinaryExpression(numerator, denominator), RealNumberExpression, Comparable<Rational> {
+internal fun rationalEquals(a: Rational, b: Any?): Boolean {
+    return b is Rational &&
+            a.numerator.value == b.numerator.value && a.denominator.value == b.denominator.value
+}
+
+internal fun rationalHashcode(rational: Rational): Int {
+    return EqualsHelper.hashCode(rational.numerator.value, rational.denominator.value)
+}
+
+interface Rational : RealNumberExpression, Comparable<Rational> {
+    val numerator: IntegerExpression
+    val denominator: IntegerExpression
+    override val abs: Rational
+    override val negate: Rational
+    override val reciprocal: Rational
+
+    // note: equals and hashcode must compare numerator and denominator and work for all rationals!
+}
+
+class SimpleRational(override val numerator: IntegerExpression, override val denominator: IntegerExpression)
+: BinaryExpression(numerator, denominator), Rational {
 
     override val negate: Rational
-        get() = Rational(numerator.negate, denominator)
+        get() = SimpleRational(numerator.negate, denominator)
     override val reciprocal: Rational
-        get() = Rational(denominator, numerator)
+        get() = SimpleRational(denominator, numerator)
     override val zero: Boolean
         get() = numerator.zero
     override val sign: Sign
         get() = numerator.sign
 
     override val abs: Rational
-        get() = Rational(numerator.abs, denominator.abs)
+        get() = SimpleRational(numerator.abs, denominator.abs)
 
     override fun toString(lhs: String, rhs: String): String {
         return "($lhs/$rhs)"
     }
 
     override fun equals(other: Any?): Boolean {
-        return EqualsHelper.equals<Rational>(other, { it.numerator == numerator && it.denominator == denominator })
+        return rationalEquals(this, other)
     }
 
     override fun hashCode(): Int {
-        return EqualsHelper.hashCode(numerator, denominator)
+        return rationalHashcode(this)
     }
 
     override fun withChildren(left: Expression, right: Expression): BinaryExpression {
-        return Rational(left as IntegerExpression, right as IntegerExpression)
+        return SimpleRational(left as IntegerExpression, right as IntegerExpression)
     }
 
     operator override fun compareTo(other: Rational): Int {

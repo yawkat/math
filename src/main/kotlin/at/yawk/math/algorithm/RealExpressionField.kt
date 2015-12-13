@@ -21,17 +21,15 @@ object RealExpressionField : ExpressionField {
                 when (expression) {
                     is ExponentiationExpression -> {
                         val base = expression.base
-                        if (expression.exponent == Expressions.minusOne) {
-                            if (base is IntegerExpression) {
-                                return Rational(Expressions.one, base)
-                            }
-                            if (base is Rational) {
-                                return Rational(base.denominator, base.numerator)
-                            }
+                        val exponent = expression.exponent
+                        if (exponent == Expressions.minusOne && base is Rational) {
+                            return base.reciprocal
                         }
-                        // todo: RationalExponentProduct
-                        if (expression.exponent == Expressions.one) {
+                        if (exponent == Expressions.one) {
                             return base
+                        }
+                        if (base is RealNumberExpression && exponent is Rational) {
+                            return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
                         }
                         return expression
                     }
@@ -99,12 +97,20 @@ object RealExpressionField : ExpressionField {
                     }
                     if (!merged) newExpressions.add(expression)
                 }
-            // todo: RationalExponentProduct
+                is RationalExponentiationProduct -> newExpressions.add(normalizeRationalExponentProductToReal(expression.components))
+                is ExponentiationExpression -> {
+                    val base = expression.base
+                    val exponent = expression.exponent
+                    if (base is RealNumberExpression && exponent is Rational) {
+                        newExpressions.add(normalizeRationalExponentProductToReal(
+                                listOf(RationalExponentiation(base, exponent))))
+                    }
+                }
                 else -> newExpressions.add(expression)
             }
         }
 
-        if (local != LocalRational.ZERO) newExpressions.add(local.toReal())
+        if (local != LocalRational.ZERO) newExpressions.add(local.toRational())
 
         if (newExpressions.isEmpty()) return Expressions.zero
         if (newExpressions.size == 1) return newExpressions[0]
@@ -173,12 +179,13 @@ object RealExpressionField : ExpressionField {
 
     private fun normalizeRationalExponentProductToReal(components: List<RationalExponentiation>): RealNumberExpression {
         val normalized = normalizeRationalExponentProduct(components)
+        println("$components -> $normalized")
         // if size is 0, the product is 1
         // normalization will make sure components will be empty when value is 1
         if (normalized.size == 0) return Expressions.one
         if (normalized.size == 1 && normalized[0].exponent == Expressions.oneRational) return normalized[0].base
         // try representing as a single rational
-        if (normalized.all { it.exponent.abs == Expressions.oneRational && it.base is IntegerExpression }) {
+        if (normalized.all { it.exponent.abs == Expressions.one && it.base is IntegerExpression }) {
             return normalized.fold(LocalRational.ONE, { lhs, rhs ->
                 if (rhs.exponent == Expressions.oneRational) {
                     lhs * rhs.base as IntegerExpression
@@ -186,7 +193,7 @@ object RealExpressionField : ExpressionField {
                     assert(rhs.exponent == Expressions.rational(-1, 1))
                     lhs / rhs.base as IntegerExpression
                 }
-            }).toReal()
+            }).toRational()
         }
         return RationalExponentiationProduct(normalized)
     }
@@ -195,23 +202,26 @@ object RealExpressionField : ExpressionField {
         // remove rational bases
         return components.flatMap {
             when (it.base) {
-                is Rational -> normalizeRationalExponentProduct(listOf(
-                        RationalExponentiation(it.base.numerator, it.exponent),
-                        RationalExponentiation(it.base.denominator, it.exponent.negate)
-                ))
+                is Rational ->
+                    if (it.base.denominator == Expressions.one) {
+                        // solve int exponentiation where possible (2^2 -> 4, 4^1/2 -> 2)
+                        val result = safeIntegerExponentiation(it.base.numerator, it.exponent)
+                        if (result == null) {
+                            listOf(it)
+                        } else {
+                            listOf(RationalExponentiation(result, Expressions.oneRational))
+                        }
+                    } else {
+                        // explode rationals
+                        normalizeRationalExponentProduct(listOf(
+                                RationalExponentiation(it.base.numerator, it.exponent),
+                                RationalExponentiation(it.base.denominator, it.exponent.negate)
+                        ))
+                    }
                 is RationalExponentiationProduct -> normalizeRationalExponentProduct(it.base.components.map { c ->
                     val newExponent = (LocalRational.ofRational(it.exponent) * c.exponent).normalize().toRational()
                     RationalExponentiation(c.base, newExponent)
                 })
-                is IntegerExpression -> {
-                    // solve int exponentiation where possible (2^2 -> 4, 4^1/2 -> 2)
-                    val result = safeIntegerExponentiation(it.base, it.exponent)
-                    if (result == null) {
-                        listOf(it)
-                    } else {
-                        listOf(RationalExponentiation(result, Expressions.oneRational))
-                    }
-                }
                 else -> listOf(it)
             }
         }
@@ -255,7 +265,7 @@ object RealExpressionField : ExpressionField {
                             }
                         }
                         baseProduct = baseProduct.normalize()
-                        if (baseProduct != LocalRational.ONE) nonCombinable.add(RationalExponentiation(baseProduct.toReal(), it.key))
+                        if (baseProduct != LocalRational.ONE) nonCombinable.add(RationalExponentiation(baseProduct.toRational(), it.key))
                         nonCombinable
                     }
                 }
@@ -303,17 +313,15 @@ internal data class LocalRational(val numerator: BigInteger, val denominator: Bi
         return this
     }
 
-    fun toReal(): RealNumberExpression {
+    fun toRational(): Rational {
         if (numerator == BigInteger.ZERO) {
             return Expressions.zero
         } else if (denominator == BigInteger.ONE) {
             return Expressions.int(numerator)
         } else {
-            return toRational()
+            return SimpleRational(Expressions.int(numerator), Expressions.int(denominator))
         }
     }
-
-    fun toRational() = Rational(Expressions.int(numerator), Expressions.int(denominator))
 
     operator fun plus(int: IntegerExpression): LocalRational {
         return LocalRational(

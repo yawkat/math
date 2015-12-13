@@ -46,22 +46,22 @@ class ExpressionParser {
     private fun toExpression(tree: ParseTree): Expression {
         when (tree) {
             is MathParser.AdditionContext -> {
-                return foldOperationsLeft(tree.operations, tree.items, { op, lhs, rhs ->
+                return AdditionExpression(combineOperations(tree.operations, tree.items, { op, expr ->
                     when (op.type) {
-                        MathParser.Plus -> Expressions.add(lhs, rhs)
-                        MathParser.Minus -> Expressions.subtract(lhs, rhs)
+                        MathParser.Plus -> expr
+                        MathParser.Minus -> Expressions.negate(expr)
                         else -> throw AssertionError()
                     }
-                })
+                }))
             }
             is MathParser.MultiplicationContext -> {
-                return foldOperationsLeft(tree.operations, tree.items, { op, lhs, rhs ->
+                return MultiplicationExpression(combineOperations(tree.operations, tree.items, { op, expr ->
                     when (op.type) {
-                        MathParser.Multiply -> Expressions.multiply(lhs, rhs)
-                        MathParser.Divide -> Expressions.divide(lhs, rhs)
+                        MathParser.Multiply -> expr
+                        MathParser.Divide -> Expressions.reciprocal(expr)
                         else -> throw AssertionError()
                     }
-                })
+                }))
             }
 
             is TerminalNode -> {
@@ -106,16 +106,17 @@ class ExpressionParser {
         throw UnsupportedOperationException(tree.javaClass.name)
     }
 
-    private fun foldOperationsLeft(operations: List<Token>, items: List<ParserRuleContext>,
-                                   foldFunction: (Token, Expression, Expression) -> Expression): Expression {
-        var expression = toExpression(items.first())
+    private fun combineOperations(operations: List<Token>, items: List<ParserRuleContext>,
+                                  foldFunction: (Token, Expression) -> Expression): List<Expression> {
         assert(items.size == operations.size + 1)
+        val expressions = arrayListOf(toExpression(items[0]))
         for (i in 0..operations.size - 1) {
-            val rhs = toExpression(items[i + 1])
+            val expression = toExpression(items[i + 1])
             val op = operations[i]
-            expression = foldFunction.invoke(op, expression, rhs)
+            val operatedExpression = foldFunction.invoke(op, expression)
+            expressions.add(operatedExpression)
         }
-        return expression
+        return expressions
     }
 
     internal fun onlyChildToExpression(tree: RuleContext): Expression {

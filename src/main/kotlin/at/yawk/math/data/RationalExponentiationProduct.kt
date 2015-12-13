@@ -22,7 +22,7 @@ class RationalExponentiationProduct(override val components: List<RationalExpone
         get() = RationalExponentiationProduct(components.map { it.reciprocal })
 
     override fun toString(radix: Int): String {
-        return components.joinToString(separator = "*") { it.toString(radix) }
+        return components.joinToString(separator = "*", prefix = "RP(", postfix = ")") { it.toString(radix) }
     }
 
     override fun visit(visitor: ExpressionVisitor): Expression {
@@ -56,6 +56,10 @@ class RationalExponentiation(override val base: RealNumberExpression, override v
         get() = RationalExponentiationProduct(listOf(RationalExponentiation(Expressions.minusOne, Expressions.one), this))
     override val reciprocal: RationalExponentiation
         get() = RationalExponentiation(base, exponent.negate)
+
+    override fun toString(lhs: String, rhs: String): String {
+        return "@R" + super.toString(lhs, rhs)
+    }
 
     override fun visit(visitor: ExpressionVisitor): Expression {
         val newBase = base.visit(visitor)

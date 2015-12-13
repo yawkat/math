@@ -7,7 +7,7 @@ import at.yawk.math.EqualsHelper
  */
 open class ExponentiationExpression(open val base: Expression, open val exponent: Expression) : BinaryExpression(base, exponent) {
     override fun toString(lhs: String, rhs: String): String {
-        return "$lhs^$rhs"
+        return "($lhs^$rhs)"
     }
 
     override fun equals(other: Any?): Boolean {

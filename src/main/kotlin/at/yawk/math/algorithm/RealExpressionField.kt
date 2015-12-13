@@ -1,6 +1,7 @@
 package at.yawk.math.algorithm
 
 import at.yawk.math.data.*
+import org.slf4j.LoggerFactory
 import java.math.BigInteger
 import kotlin.math.div
 import kotlin.math.plus
@@ -11,6 +12,8 @@ import kotlin.math.unaryMinus
  * @author yawkat
  */
 object RealExpressionField : ExpressionField {
+    private val log = LoggerFactory.getLogger(RealExpressionField::class.java)
+
     override fun simplify(expression: Expression): Expression {
         return expression.visit(object : ExpressionVisitor {
             override fun postEnterExpression(expression: Expression): Expression {
@@ -18,61 +21,73 @@ object RealExpressionField : ExpressionField {
             }
 
             override fun visitSingleExpression(expression: Expression): Expression {
-                when (expression) {
-                    is ExponentiationExpression -> {
-                        val base = expression.base
-                        val exponent = expression.exponent
-                        if (exponent == Expressions.minusOne && base is Rational) {
-                            return base.reciprocal
-                        }
-                        if (exponent == Expressions.one) {
-                            return base
-                        }
-                        if (base is RealNumberExpression && exponent is Rational) {
-                            return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
-                        }
-                        return expression
-                    }
-                    is AdditionExpression -> return add(expression.components)
-                    is MultiplicationExpression -> return multiply(expression.components)
-                    is GcdExpression -> {
-                        if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
-                                expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
-                            return GcdSolver.gcd(expression.left, expression.right)
-                        } else {
-                            return expression
-                        }
-                    }
-                    is LcmExpression -> {
-                        if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
-                                expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
-                            return LcmSolver.lcm(expression.left, expression.right)
-                        } else {
-                            return expression
-                        }
-                    }
-                    is DotProductExpression -> {
-                        if (expression.left is Vector && expression.right is Vector
-                                && expression.left.dimension == expression.right.dimension
-                                && expression.left.dimension > 0) {
-                            var sum: Expression? = null
-                            expression.left.rows.forEachIndexed { i, lhs ->
-                                val rhs = expression.right[i]
-                                if (sum == null) {
-                                    sum = multiply(listOf(lhs, rhs))
-                                } else {
-                                    sum = add(listOf(sum!!, multiply(listOf(lhs, rhs))))
-                                }
-                            }
-                            return simplify(sum!!)
-                        } else {
-                            return expression
-                        }
-                    }
-                    else -> return expression
-                }
+                val simplified = simplify0(expression)
+                log.trace("{} -> {}", expression, simplified)
+                return simplified
             }
         })
+    }
+
+    private fun simplify0(expression: Expression): Expression {
+        when (expression) {
+            is ExponentiationExpression -> {
+                val base = expression.base
+                val exponent = expression.exponent
+                if (exponent == Expressions.minusOne && base is Rational) {
+                    return base.reciprocal
+                }
+                if (exponent == Expressions.one) {
+                    return base
+                }
+                if (base is RealNumberExpression && exponent is Rational) {
+                    return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
+                }
+                return expression
+            }
+            is AdditionExpression -> return add(expression.components)
+            is MultiplicationExpression -> return multiply(expression.components)
+            is GcdExpression -> {
+                if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
+                        expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
+                    return GcdSolver.gcd(expression.left, expression.right)
+                } else {
+                    return expression
+                }
+            }
+            is LcmExpression -> {
+                if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
+                        expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
+                    return LcmSolver.lcm(expression.left, expression.right)
+                } else {
+                    return expression
+                }
+            }
+            is DotProductExpression -> {
+                if (expression.left is Vector && expression.right is Vector
+                        && expression.left.dimension == expression.right.dimension
+                        && expression.left.dimension > 0) {
+                    var sum: Expression? = null
+                    expression.left.rows.forEachIndexed { i, lhs ->
+                        val rhs = expression.right[i]
+                        if (sum == null) {
+                            sum = multiply(listOf(lhs, rhs))
+                        } else {
+                            sum = add(listOf(sum!!, multiply(listOf(lhs, rhs))))
+                        }
+                    }
+                    return simplify(sum!!)
+                } else {
+                    return expression
+                }
+            }
+            is IntegerExpression -> return expression
+            is Rational -> {
+                if (expression.denominator == Expressions.one) return expression.numerator
+                if (expression.denominator == Expressions.minusOne) return expression.numerator.negate
+                return expression
+            }
+            else -> return expression
+        }
     }
 
     private fun add(expressions: List<Expression>): Expression {
@@ -104,6 +119,8 @@ object RealExpressionField : ExpressionField {
                     if (base is RealNumberExpression && exponent is Rational) {
                         newExpressions.add(normalizeRationalExponentProductToReal(
                                 listOf(RationalExponentiation(base, exponent))))
+                    } else {
+                        newExpressions.add(expression)
                     }
                 }
                 else -> newExpressions.add(expression)
@@ -179,7 +196,6 @@ object RealExpressionField : ExpressionField {
 
     private fun normalizeRationalExponentProductToReal(components: List<RationalExponentiation>): RealNumberExpression {
         val normalized = normalizeRationalExponentProduct(components)
-        println("$components -> $normalized")
         // if size is 0, the product is 1
         // normalization will make sure components will be empty when value is 1
         if (normalized.size == 0) return Expressions.one

@@ -2,9 +2,9 @@ package at.yawk.math.ui.jeuclid
 
 import at.yawk.math.data.*
 import net.sourceforge.jeuclid.context.LayoutContextImpl
+import net.sourceforge.jeuclid.context.Parameter
 import net.sourceforge.jeuclid.converter.Converter
 import net.sourceforge.jeuclid.parser.Parser
-import nu.xom.Attribute
 import nu.xom.Document
 import nu.xom.Element
 import nu.xom.Node
@@ -23,17 +23,26 @@ object ExpressionRenderer {
 
     fun render(expression: Expression): BufferedImage {
         println(expression)
-        val xomNode = toNode(expression)
-        val xomDocument = Document(Element("math"))
-        xomDocument.rootElement.addAttribute(Attribute("mode", "display"))
-        xomDocument.rootElement.appendChild(xomNode)
-        val xml = xomDocument.toXML()
+        val xml = toMathMl(expression)
 
         val domNode = Parser.getInstance().parseStreamSource(StreamSource(StringReader(xml)))
 
+        val layoutContext = LayoutContextImpl(LayoutContextImpl.getDefaultLayoutContext())
+        layoutContext.setParameter(Parameter.ANTIALIAS, true)
+        layoutContext.setParameter(Parameter.MATHSIZE, 20)
+
         val memStream = ByteArrayOutputStream()
-        Converter.getInstance().convert(domNode, memStream, "image/png", LayoutContextImpl.getDefaultLayoutContext())
+        Converter.getInstance().convert(domNode, memStream, "image/png", layoutContext)
         return ImageIO.read(ByteArrayInputStream(memStream.toByteArray()))
+    }
+
+    // visible for testing
+    internal fun toMathMl(expression: Expression): String {
+        val xomNode = toNode(expression)
+        val xomDocument = Document(Element("math"))
+        xomDocument.rootElement.appendChild(xomNode)
+        val xml = xomDocument.toXML()
+        return xml
     }
 
     private fun toNode(expression: Expression): Node {
@@ -43,12 +52,18 @@ object ExpressionRenderer {
                 return fraction(toNode(expression.numerator), toNode(expression.denominator))
             is ExponentiationExpression -> {
                 val exponent = expression.exponent
+                if (exponent is RealNumberExpression && exponent.sign == Sign.NEGATIVE) {
+                    val reciprocal =
+                            if (exponent == Expressions.minusOne) expression.base
+                            else ExponentiationExpression(expression.base, exponent.negate)
+
+                    return fraction(number("1"), toNode(reciprocal))
+                }
                 if (exponent is Rational && exponent.numerator == Expressions.one) {
                     val exponentNode = if (exponent.denominator == Expressions.int(2)) null else toNode(exponent.denominator)
                     return root(toNode(expression.base), exponentNode)
-                } else {
-                    return exp(toNode(expression.base), toNode(exponent))
                 }
+                return exp(toNode(expression.base), toNode(exponent))
             }
             is RationalExponentiationProduct -> {
                 fun expressionChainToNodes(chain: List<RationalExponentiation>): List<Node> {
@@ -90,6 +105,14 @@ object ExpressionRenderer {
                 val nodes = arrayListOf<Node>()
                 for (component in expression.components) {
                     if (!nodes.isEmpty()) nodes.add(operator("+"))
+                    nodes.add(toNode(component))
+                }
+                return row(nodes)
+            }
+            is MultiplicationExpression -> {
+                val nodes = arrayListOf<Node>()
+                for (component in expression.components) {
+                    if (!nodes.isEmpty()) nodes.add(operator("·"))
                     nodes.add(toNode(component))
                 }
                 return row(nodes)

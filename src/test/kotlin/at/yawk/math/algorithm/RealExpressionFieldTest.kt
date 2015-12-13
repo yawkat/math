@@ -1,6 +1,7 @@
 package at.yawk.math.algorithm
 
 import at.yawk.math.algorithm.RealExpressionField.simplify
+import at.yawk.math.data.*
 import at.yawk.math.data.Expressions.add
 import at.yawk.math.data.Expressions.divide
 import at.yawk.math.data.Expressions.dotProduct
@@ -136,5 +137,17 @@ class RealExpressionFieldTest {
         assertEquals(
                 simplify(add(int(1), int(2))),
                 int(3))
+    }
+
+    @Test
+    fun testNestedRationalExp() {
+        assertEquals(
+                simplify(divide(int(1), IrrationalConstant.PI)),
+                RationalExponentiation(IrrationalConstant.PI, Expressions.minusOne))
+    }
+
+    private fun rationalPow(vararg components: Pair<RealNumberExpression, Rational>): RationalExponentiationProduct {
+        return RationalExponentiationProduct(
+                components.map { RationalExponentiation(it.first, it.second) })
     }
 }

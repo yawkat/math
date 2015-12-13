@@ -1,10 +1,12 @@
 package at.yawk.math.ui.jeuclid
 
-import at.yawk.math.algorithm.RealExpressionField
-import at.yawk.math.parser.ExpressionParser
+import at.yawk.math.data.Expressions
+import at.yawk.math.data.IrrationalConstant
+import org.testng.Assert
 import org.testng.annotations.Test
-import java.io.File
-import javax.imageio.ImageIO
+
+const val HEADER = "<?xml version=\"1.0\"?>\n<math>"
+const val FOOTER = "</math>\n"
 
 /**
  * @author yawkat
@@ -12,9 +14,9 @@ import javax.imageio.ImageIO
 class ExpressionRendererTest {
     @Test
     fun test() {
-        val parser = ExpressionParser()
-        parser.addDefaultFunctions()
-        val image = ExpressionRenderer.render(RealExpressionField.simplify(parser.parse("5^1*2^(1/2)+3")))
-        ImageIO.write(image, "PNG", File("test.png"))
+        Assert.assertEquals(
+                ExpressionRenderer.toMathMl(Expressions.divide(Expressions.int(1), IrrationalConstant.PI)),
+                HEADER + "<mrow><mn>1</mn><mo>·</mo><mrow><mfrac><mn>1</mn><mtext>pi</mtext></mfrac></mrow></mrow>" + FOOTER
+        )
     }
 }

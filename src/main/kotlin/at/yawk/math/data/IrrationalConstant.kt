@@ -13,6 +13,13 @@ enum class IrrationalConstant(val constantName: String, val approximation: Doubl
         get() = this
     override val zero: Boolean
         get() = false
+    override val negate: RationalExponentiationProduct
+        get() = RationalExponentiationProduct(listOf(
+                RationalExponentiation(this, Expressions.rational(1, 1)),
+                RationalExponentiation(Expressions.minusOne, Expressions.rational(1, 1))
+        ))
+    override val reciprocal: RationalExponentiationProduct
+        get() = RationalExponentiationProduct(listOf(RationalExponentiation(this, Expressions.rational(-1, 1))))
 
     override fun toString(radix: Int): String {
         return constantName

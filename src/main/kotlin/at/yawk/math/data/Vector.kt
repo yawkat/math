@@ -39,4 +39,11 @@ class Vector(val rows: List<Expression>) : BaseExpression() {
     operator fun get(i: Int): Expression {
         return rows[i]
     }
+
+    /**
+     * @return `true` if this vector is compatible with the other vector (for addition, dot product etc.)
+     */
+    fun isCompatibleWith(other: Vector): Boolean {
+        return other.dimension == this.dimension
+    }
 }

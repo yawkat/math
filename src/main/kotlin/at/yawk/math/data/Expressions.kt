@@ -9,6 +9,7 @@ object Expressions {
     val zero = int(0)
     val one = int(1)
     val minusOne = int(-1)
+    val oneRational = rational(1, 1)
 
     fun add(vararg a: Expression): Expression {
         return AdditionExpression(listOf(*a))
@@ -27,10 +28,12 @@ object Expressions {
     }
 
     fun negate(a: Expression): Expression {
+        if (a is RealNumberExpression) return a.negate
         return multiply(minusOne, a)
     }
 
     fun reciprocal(a: Expression): Expression {
+        if (a is RealNumberExpression) return a.reciprocal
         return ExponentiationExpression(a, minusOne)
     }
 
@@ -46,7 +49,7 @@ object Expressions {
         return int(BigInteger.valueOf(value))
     }
 
-    fun rational(numerator: Long, denominator: Long): Expression {
+    fun rational(numerator: Long, denominator: Long): Rational {
         return Rational(int(numerator), int(denominator))
     }
 

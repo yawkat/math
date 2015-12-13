@@ -90,7 +90,7 @@ object RealExpressionField : ExpressionField {
                     var merged = false
                     for (i in 0..newExpressions.size - 1) {
                         val item = newExpressions[i]
-                        if (item is Vector && item.dimension == expression.dimension) {
+                        if (item is Vector && expression.isCompatibleWith(item)) {
                             // we can merge these two vectors
                             newExpressions[i] = item.mapIndexed { i, row -> add(listOf(row, expression[i])) }
                             merged = true
@@ -116,29 +116,30 @@ object RealExpressionField : ExpressionField {
         val newVectors = arrayListOf<Vector>()
 
         // combine rationals
-        var local: LocalRational = LocalRational.ONE
+        val rationalExponentProductItems = arrayListOf<RationalExponentiation>()
         for (expression in expressions) {
             when (expression) {
-                is IntegerExpression -> local *= expression
-                is Rational -> local *= expression
+                is RealNumberExpression -> rationalExponentProductItems.add(RationalExponentiation(expression, Expressions.oneRational))
                 is Vector -> newVectors.add(expression)
-            // todo: RationalExponentProduct
                 else -> newExpressions.add(expression)
             }
         }
+        val rationalExponentProduct = normalizeRationalExponentProductToReal(rationalExponentProductItems)
+        if (rationalExponentProduct.zero) return Expressions.zero
 
-        if (local == LocalRational.ZERO) return Expressions.zero
+        if (rationalExponentProduct != Expressions.one) {
 
-        val realFactor = local.toReal()
-        // merge rational and vectors
-        if (newVectors.isEmpty()) {
-            // no vectors - just append the rational
-            if (realFactor != Expressions.one) {
-                newExpressions.add(realFactor)
+            // merge rational and vectors
+            if (newVectors.isEmpty()) {
+                // no vectors - just append the rational
+                newExpressions.add(rationalExponentProduct)
+            } else {
+                // at least one vector - merge the rational into the vector
+                newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, rationalExponentProduct)) } })
             }
         } else {
-            // at least one vector - merge the rational into the vector
-            newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, realFactor)) } })
+            // add vectors without multiplication since the constant factor is 0
+            newExpressions.addAll(newVectors)
         }
 
         if (newExpressions.isEmpty()) return Expressions.one
@@ -146,16 +147,126 @@ object RealExpressionField : ExpressionField {
         return MultiplicationExpression(newExpressions)
     }
 
-    private fun makeRational(numerator: BigInteger, denominator: BigInteger): RealNumberExpression {
-        assert(denominator.signum() == 1)
-        if (numerator == BigInteger.ZERO) return Expressions.zero
+    private fun safeRoot(base: BigInteger, exponent: BigInteger): BigInteger? {
+        assert(exponent.signum() > 0)
+        val approximatePow = Math.round(Math.pow(Math.abs(base.toDouble()), 1 / exponent.toDouble()))
+        val approximatePowBig = BigInteger.valueOf(approximatePow)
+        if (approximatePowBig.pow(exponent.toInt()) == base) {
+            return approximatePowBig
+        } else
+            return null
+    }
 
-        val gcd = numerator.gcd(denominator)
-        if (gcd == denominator) {
-            return Expressions.int(numerator / gcd)
-        } else {
-            return Expressions.rational(numerator / gcd, denominator / gcd)
+    private fun safeIntegerExponentiation(base: IntegerExpression, exponent: Rational): IntegerExpression? {
+        if (exponent == Expressions.oneRational) return base // shortcut
+        try {
+            val rootContent = base.value.pow(exponent.numerator.value.intValueExact())
+            // check for even root of negative base (sqrt(-1))
+            if (exponent.denominator.even && rootContent.signum() == -1) return null
+            val result = safeRoot(rootContent, exponent.denominator.value) ?: return null
+            return IntegerExpression(result)
+        } catch(e: ArithmeticException) {
+            // too large exponent, can't simplify
+            return null
         }
+    }
+
+    private fun normalizeRationalExponentProductToReal(components: List<RationalExponentiation>): RealNumberExpression {
+        val normalized = normalizeRationalExponentProduct(components)
+        // if size is 0, the product is 1
+        // normalization will make sure components will be empty when value is 1
+        if (normalized.size == 0) return Expressions.one
+        if (normalized.size == 1 && normalized[0].exponent == Expressions.oneRational) return normalized[0].base
+        // try representing as a single rational
+        if (normalized.all { it.exponent.abs == Expressions.oneRational && it.base is IntegerExpression }) {
+            return normalized.fold(LocalRational.ONE, { lhs, rhs ->
+                if (rhs.exponent == Expressions.oneRational) {
+                    lhs * rhs.base as IntegerExpression
+                } else {
+                    assert(rhs.exponent == Expressions.rational(-1, 1))
+                    lhs / rhs.base as IntegerExpression
+                }
+            }).toReal()
+        }
+        return RationalExponentiationProduct(normalized)
+    }
+
+    private fun normalizeRationalExponentProduct(components: List<RationalExponentiation>): List<RationalExponentiation> {
+        // remove rational bases
+        return components.flatMap {
+            when (it.base) {
+                is Rational -> normalizeRationalExponentProduct(listOf(
+                        RationalExponentiation(it.base.numerator, it.exponent),
+                        RationalExponentiation(it.base.denominator, it.exponent.negate)
+                ))
+                is RationalExponentiationProduct -> normalizeRationalExponentProduct(it.base.components.map { c ->
+                    val newExponent = (LocalRational.ofRational(it.exponent) * c.exponent).normalize().toRational()
+                    RationalExponentiation(c.base, newExponent)
+                })
+                is IntegerExpression -> {
+                    // solve int exponentiation where possible (2^2 -> 4, 4^1/2 -> 2)
+                    val result = safeIntegerExponentiation(it.base, it.exponent)
+                    if (result == null) {
+                        listOf(it)
+                    } else {
+                        listOf(RationalExponentiation(result, Expressions.oneRational))
+                    }
+                }
+                else -> listOf(it)
+            }
+        }
+                // normalize exponents
+                .map { RationalExponentiation(it.base, normalizeRational(it.exponent)) }
+                // group by base: same base -> add exponents
+                .groupBy { it.base }
+                .map {
+                    if (it.value.size == 1) {
+                        it.value[0]
+                    } else {
+                        // sum exponents
+                        val exponentSum = it.value.fold(LocalRational.ZERO, { lhs, rhs -> lhs + rhs.exponent })
+                                .normalize().toRational()
+                        RationalExponentiation(it.key, exponentSum)
+                    }
+                }
+                // remove 0 exponents
+                .filter { it.exponent.numerator != Expressions.zero }
+                // evaluate integer components where possible
+                .map {
+                    if (it.base !is IntegerExpression) it else {
+                        val result = safeIntegerExponentiation(it.base, it.exponent)
+                        if (result == null) it else {
+                            RationalExponentiation(result, Expressions.oneRational)
+                        }
+                    }
+                }
+                // group by exponent: same exponent -> multiply values
+                .groupBy { it.exponent }
+                .flatMap {
+                    if (it.value.size == 1) {
+                        it.value
+                    } else {
+                        var baseProduct = LocalRational.ONE
+                        val nonCombinable = arrayListOf<RationalExponentiation>()
+                        for (expr in it.value) {
+                            when (expr.base) {
+                                is IntegerExpression -> baseProduct *= expr.base
+                                else -> nonCombinable.add(expr)
+                            }
+                        }
+                        baseProduct = baseProduct.normalize()
+                        if (baseProduct != LocalRational.ONE) nonCombinable.add(RationalExponentiation(baseProduct.toReal(), it.key))
+                        nonCombinable
+                    }
+                }
+                // when exponent even -> use absolute base
+                .map { if (it.exponent.numerator.even) RationalExponentiation(it.base.abs, it.exponent) else it }
+                // remove 1 bases
+                .filter { it.base != Expressions.one }
+    }
+
+    private fun normalizeRational(rational: Rational): Rational {
+        return LocalRational.ofRational(rational).normalize().toRational()
     }
 }
 
@@ -163,8 +274,17 @@ internal data class LocalRational(val numerator: BigInteger, val denominator: Bi
     companion object {
         val ZERO = LocalRational(BigInteger.ZERO, BigInteger.ONE)
         val ONE = LocalRational(BigInteger.ONE, BigInteger.ONE)
+
+        fun ofRational(rational: Rational): LocalRational {
+            return LocalRational(rational.numerator.value, rational.denominator.value)
+        }
     }
 
+    /**
+     * Make sure that
+     * - the denominator is positive
+     * - the numerator is not a multiple of the denominator
+     */
     fun normalize(): LocalRational {
         if (numerator == BigInteger.ZERO) {
             return ZERO
@@ -189,9 +309,11 @@ internal data class LocalRational(val numerator: BigInteger, val denominator: Bi
         } else if (denominator == BigInteger.ONE) {
             return Expressions.int(numerator)
         } else {
-            return Rational(Expressions.int(numerator), Expressions.int(denominator))
+            return toRational()
         }
     }
+
+    fun toRational() = Rational(Expressions.int(numerator), Expressions.int(denominator))
 
     operator fun plus(int: IntegerExpression): LocalRational {
         return LocalRational(
@@ -218,6 +340,13 @@ internal data class LocalRational(val numerator: BigInteger, val denominator: Bi
         return LocalRational(
                 numerator * rational.numerator.value,
                 denominator * rational.denominator.value
+        ).normalize()
+    }
+
+    operator fun div(int: IntegerExpression): LocalRational {
+        return LocalRational(
+                numerator,
+                denominator * int.value
         ).normalize()
     }
 }

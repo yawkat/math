@@ -6,7 +6,7 @@ import java.math.BigInteger
 /**
  * @author yawkat
  */
-class IntegerExpression internal constructor(val value: BigInteger) : BaseExpression(), RealNumberExpression {
+class IntegerExpression internal constructor(val value: BigInteger) : BaseExpression(), RealNumberExpression, Comparable<IntegerExpression> {
     override val sign: Sign
         get() = when (value.signum()) {
             0 -> Sign.ZERO
@@ -14,10 +14,17 @@ class IntegerExpression internal constructor(val value: BigInteger) : BaseExpres
             -1 -> Sign.NEGATIVE
             else -> throw AssertionError()
         }
+    override val negate: IntegerExpression
+        get() = IntegerExpression(value.negate())
     override val abs: IntegerExpression
         get() = if (sign == Sign.NEGATIVE) IntegerExpression(value.abs()) else this
     override val zero: Boolean
         get() = value.signum() == 0
+    override val reciprocal: Rational
+        get() = Rational(Expressions.one, this)
+
+    val even: Boolean
+        get() = value.and(BigInteger.ONE) == BigInteger.ZERO
 
     override fun toString(radix: Int): String {
         return value.toString(radix)
@@ -33,5 +40,9 @@ class IntegerExpression internal constructor(val value: BigInteger) : BaseExpres
 
     override fun visit(visitor: ExpressionVisitor): Expression {
         return visitor.visitSingleExpression(this)
+    }
+
+    operator override fun compareTo(other: IntegerExpression): Int {
+        return value.compareTo(other.value)
     }
 }

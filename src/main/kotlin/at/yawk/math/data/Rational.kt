@@ -1,8 +1,15 @@
 package at.yawk.math.data
 
 import at.yawk.math.EqualsHelper
+import kotlin.math.times
 
-class Rational(val numerator: IntegerExpression, val denominator: IntegerExpression) : BinaryExpression(numerator, denominator), RealNumberExpression {
+class Rational(val numerator: IntegerExpression, val denominator: IntegerExpression)
+: BinaryExpression(numerator, denominator), RealNumberExpression, Comparable<Rational> {
+
+    override val negate: Rational
+        get() = Rational(numerator.negate, denominator)
+    override val reciprocal: Rational
+        get() = Rational(denominator, numerator)
     override val zero: Boolean
         get() = numerator.zero
     override val sign: Sign
@@ -12,7 +19,7 @@ class Rational(val numerator: IntegerExpression, val denominator: IntegerExpress
         get() = Rational(numerator.abs, denominator.abs)
 
     override fun toString(lhs: String, rhs: String): String {
-        return "$lhs / $rhs"
+        return "($lhs/$rhs)"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -25,5 +32,9 @@ class Rational(val numerator: IntegerExpression, val denominator: IntegerExpress
 
     override fun withChildren(left: Expression, right: Expression): BinaryExpression {
         return Rational(left as IntegerExpression, right as IntegerExpression)
+    }
+
+    operator override fun compareTo(other: Rational): Int {
+        return (this.numerator.value * other.denominator.value).compareTo(other.numerator.value * this.denominator.value)
     }
 }

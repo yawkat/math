@@ -3,7 +3,7 @@ package at.yawk.math.data
 /**
  * @author yawkat
  */
-abstract class ChainExpression(val components: List<Expression>) : BaseExpression() {
+abstract class ChainExpression(open val components: List<Expression>) : BaseExpression() {
     protected abstract fun withComponents(components: List<Expression>): ChainExpression
 
     override fun visit(visitor: ExpressionVisitor): Expression {

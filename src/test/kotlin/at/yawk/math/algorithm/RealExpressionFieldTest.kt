@@ -164,6 +164,13 @@ class RealExpressionFieldTest {
                 multiply(a, b, c, d))
     }
 
+    @Test
+    fun testRealDivide() {
+        assertEquals(
+                simplify(divide(int(5), IrrationalConstant.PI)),
+                rationalPow(Pair(int(5), int(1)), Pair(IrrationalConstant.PI, int(-1))))
+    }
+
     private fun rationalPow(vararg components: Pair<RealNumberExpression, Rational>): RationalExponentiationProduct {
         return RationalExponentiationProduct(
                 components.map { RationalExponentiation(it.first, it.second) })

@@ -168,6 +168,7 @@ object RealExpressionField : ExpressionField {
 
         fun push(expression: Expression) {
             when (expression) {
+                is RationalExponentiation -> rationalExponentProductItems.add(expression)
                 is RealNumberExpression -> rationalExponentProductItems.add(RationalExponentiation(expression, Expressions.one))
                 is Vector -> newVectors.add(expression)
                 is MultiplicationExpression -> pushAll(expression.components)
@@ -237,6 +238,7 @@ object RealExpressionField : ExpressionField {
         if (normalized.size == 0) return Expressions.one
         if (normalized.size == 1 && normalized[0].exponent == Expressions.one) return normalized[0].base
         // try representing as a single rational
+        // base is never rational, always int or irrational!
         if (normalized.all { it.exponent.abs == Expressions.one && it.base is IntegerExpression }) {
             return normalized.fold(LocalRational.ONE, { lhs, rhs ->
                 if (rhs.exponent == Expressions.one) {
@@ -274,6 +276,10 @@ object RealExpressionField : ExpressionField {
                     val newExponent = (LocalRational.ofRational(it.exponent) * c.exponent).normalize().toRational()
                     RationalExponentiation(c.base, newExponent)
                 })
+                is RationalExponentiation -> {
+                    val newExponent = (LocalRational.ofRational(it.exponent) * it.exponent).normalize().toRational()
+                    listOf(RationalExponentiation(it.base, newExponent))
+                }
                 else -> listOf(it)
             }
         }

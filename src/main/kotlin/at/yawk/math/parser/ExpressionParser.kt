@@ -94,6 +94,8 @@ class ExpressionParser {
                 assert(last is TerminalNode && last.symbol.type == MathParser.EOF)
                 return toExpression(tree.children[0])
             }
+            is MathParser.ParenthesesExpressionContext -> return toExpression(tree.value)
+
             is MathParser.ExpressionClosedContext -> return onlyChildToExpression(tree)
             is MathParser.ExpressionOpenContext -> return onlyChildToExpression(tree)
             is MathParser.ExpressionOpenHighPriorityContext -> return onlyChildToExpression(tree)

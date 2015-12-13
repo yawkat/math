@@ -9,7 +9,6 @@ object Expressions {
     val zero = int(0)
     val one = int(1)
     val minusOne = int(-1)
-    val oneRational = rational(1, 1)
 
     fun add(vararg a: Expression): Expression {
         return AdditionExpression(listOf(*a))

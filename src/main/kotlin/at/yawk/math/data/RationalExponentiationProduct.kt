@@ -16,7 +16,7 @@ class RationalExponentiationProduct(override val components: List<RationalExpone
         get() = sign == Sign.ZERO
     override val negate: RationalExponentiationProduct
         get() = RationalExponentiationProduct(listOf(
-                RationalExponentiation(Expressions.minusOne, Expressions.oneRational), *components.toTypedArray()
+                RationalExponentiation(Expressions.minusOne, Expressions.one), *components.toTypedArray()
         ))
     override val reciprocal: RationalExponentiationProduct
         get() = RationalExponentiationProduct(components.map { it.reciprocal })
@@ -53,20 +53,9 @@ class RationalExponentiation(override val base: RealNumberExpression, override v
     override val zero: Boolean
         get() = base.zero
     override val negate: RationalExponentiationProduct
-        get() = RationalExponentiationProduct(listOf(RationalExponentiation(Expressions.minusOne, Expressions.oneRational), this))
+        get() = RationalExponentiationProduct(listOf(RationalExponentiation(Expressions.minusOne, Expressions.one), this))
     override val reciprocal: RationalExponentiation
         get() = RationalExponentiation(base, exponent.negate)
-
-    override fun toString(lhs: String, rhs: String): String {
-        // 4^1 -> 4
-        if (exponent == Expressions.oneRational) {
-            return lhs
-        } else if (exponent.denominator == Expressions.one) {
-            return "$lhs^${exponent.numerator}"
-        } else {
-            return "$lhs^$rhs"
-        }
-    }
 
     override fun visit(visitor: ExpressionVisitor): Expression {
         val newBase = base.visit(visitor)

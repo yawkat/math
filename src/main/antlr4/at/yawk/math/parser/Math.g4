@@ -10,7 +10,9 @@ Integer: '0'..'9'+;
 vector : '(' (rows+=expressionOpen ',')+ rows+=expressionOpen ')';
 functionCall : name=VariableName '(' ((parameters+=expressionOpen ',')+ parameters+=expressionOpen)? ')';
 variableAccess : name=VariableName;
-expressionClosed : '(' expressionOpen ')' | Integer | functionCall | variableAccess | vector;
+expressionClosed : parenthesesExpression | Integer | functionCall | variableAccess | vector;
+
+parenthesesExpression : '(' value=expressionOpen ')';
 
 expressionOpen : expressionOpenLowPriority;
 expressionOpenLowPriority : addition | expressionOpenMediumPriority;

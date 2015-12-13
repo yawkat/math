@@ -125,7 +125,7 @@ object RealExpressionField : ExpressionField {
         val rationalExponentProductItems = arrayListOf<RationalExponentiation>()
         for (expression in expressions) {
             when (expression) {
-                is RealNumberExpression -> rationalExponentProductItems.add(RationalExponentiation(expression, Expressions.oneRational))
+                is RealNumberExpression -> rationalExponentProductItems.add(RationalExponentiation(expression, Expressions.one))
                 is Vector -> newVectors.add(expression)
                 else -> newExpressions.add(expression)
             }
@@ -164,7 +164,7 @@ object RealExpressionField : ExpressionField {
     }
 
     private fun safeIntegerExponentiation(base: IntegerExpression, exponent: Rational): IntegerExpression? {
-        if (exponent == Expressions.oneRational) return base // shortcut
+        if (exponent == Expressions.one) return base // shortcut
         try {
             val rootContent = base.value.pow(exponent.numerator.value.intValueExact())
             // check for even root of negative base (sqrt(-1))
@@ -183,11 +183,11 @@ object RealExpressionField : ExpressionField {
         // if size is 0, the product is 1
         // normalization will make sure components will be empty when value is 1
         if (normalized.size == 0) return Expressions.one
-        if (normalized.size == 1 && normalized[0].exponent == Expressions.oneRational) return normalized[0].base
+        if (normalized.size == 1 && normalized[0].exponent == Expressions.one) return normalized[0].base
         // try representing as a single rational
         if (normalized.all { it.exponent.abs == Expressions.one && it.base is IntegerExpression }) {
             return normalized.fold(LocalRational.ONE, { lhs, rhs ->
-                if (rhs.exponent == Expressions.oneRational) {
+                if (rhs.exponent == Expressions.one) {
                     lhs * rhs.base as IntegerExpression
                 } else {
                     assert(rhs.exponent == Expressions.rational(-1, 1))
@@ -209,7 +209,7 @@ object RealExpressionField : ExpressionField {
                         if (result == null) {
                             listOf(it)
                         } else {
-                            listOf(RationalExponentiation(result, Expressions.oneRational))
+                            listOf(RationalExponentiation(result, Expressions.one))
                         }
                     } else {
                         // explode rationals
@@ -225,8 +225,6 @@ object RealExpressionField : ExpressionField {
                 else -> listOf(it)
             }
         }
-                // normalize exponents
-                .map { RationalExponentiation(it.base, normalizeRational(it.exponent)) }
                 // group by base: same base -> add exponents
                 .groupBy { it.base }
                 .map {
@@ -239,6 +237,8 @@ object RealExpressionField : ExpressionField {
                         RationalExponentiation(it.key, exponentSum)
                     }
                 }
+                // normalize exponents
+                .map { RationalExponentiation(it.base, normalizeRational(it.exponent)) }
                 // remove 0 exponents
                 .filter { it.exponent.numerator != Expressions.zero }
                 // evaluate integer components where possible
@@ -246,7 +246,7 @@ object RealExpressionField : ExpressionField {
                     if (it.base !is IntegerExpression) it else {
                         val result = safeIntegerExponentiation(it.base, it.exponent)
                         if (result == null) it else {
-                            RationalExponentiation(result, Expressions.oneRational)
+                            RationalExponentiation(result, Expressions.one)
                         }
                     }
                 }

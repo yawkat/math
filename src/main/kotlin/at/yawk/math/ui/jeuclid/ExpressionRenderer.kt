@@ -83,9 +83,9 @@ object ExpressionRenderer {
                 }
 
                 val numerator = expressionChainToNodes(
-                        expression.components.filter { it.sign != Sign.NEGATIVE })
+                        expression.components.filter { it.exponent.sign != Sign.NEGATIVE })
                 val denominator = expressionChainToNodes(
-                        expression.components.filter { it.sign == Sign.NEGATIVE }.map { it.reciprocal })
+                        expression.components.filter { it.exponent.sign == Sign.NEGATIVE }.map { it.reciprocal })
 
                 if (numerator.isEmpty()) {
                     if (denominator.isEmpty()) {

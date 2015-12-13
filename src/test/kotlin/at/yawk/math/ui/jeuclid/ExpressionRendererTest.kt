@@ -1,5 +1,6 @@
 package at.yawk.math.ui.jeuclid
 
+import at.yawk.math.algorithm.RealExpressionField
 import at.yawk.math.data.Expressions
 import at.yawk.math.data.IrrationalConstant
 import org.testng.Assert
@@ -15,8 +16,8 @@ class ExpressionRendererTest {
     @Test
     fun test() {
         Assert.assertEquals(
-                ExpressionRenderer.toMathMl(Expressions.divide(Expressions.int(1), IrrationalConstant.PI)),
-                HEADER + "<mrow><mn>1</mn><mo>·</mo><mrow><mfrac><mn>1</mn><mtext>pi</mtext></mfrac></mrow></mrow>" + FOOTER
+                ExpressionRenderer.toMathMl(RealExpressionField.simplify(Expressions.divide(Expressions.int(5), IrrationalConstant.PI))),
+                HEADER + "<mfrac><mrow><mn>5</mn></mrow><mrow><mtext>pi</mtext></mrow></mfrac>" + FOOTER
         )
     }
 }

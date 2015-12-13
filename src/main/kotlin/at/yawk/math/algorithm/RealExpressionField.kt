@@ -153,40 +153,57 @@ object RealExpressionField : ExpressionField {
         return adder.toExpression()
     }
 
-    private fun multiply(expressions: List<Expression>): Expression {
+    private class Multiplier {
         val newExpressions = arrayListOf<Expression>()
         val newVectors = arrayListOf<Vector>()
 
         // combine rationals
         val rationalExponentProductItems = arrayListOf<RationalExponentiation>()
-        for (expression in expressions) {
+
+        fun pushAll(expressions: List<Expression>) {
+            for (expression in expressions) {
+                push(expression)
+            }
+        }
+
+        fun push(expression: Expression) {
             when (expression) {
                 is RealNumberExpression -> rationalExponentProductItems.add(RationalExponentiation(expression, Expressions.one))
                 is Vector -> newVectors.add(expression)
+                is MultiplicationExpression -> pushAll(expression.components)
                 else -> newExpressions.add(expression)
             }
         }
-        val rationalExponentProduct = normalizeRationalExponentProductToReal(rationalExponentProductItems)
-        if (rationalExponentProduct.zero) return Expressions.zero
 
-        if (rationalExponentProduct != Expressions.one) {
+        fun toExpression(): Expression {
+            val rationalExponentProduct = normalizeRationalExponentProductToReal(rationalExponentProductItems)
+            if (rationalExponentProduct.zero) return Expressions.zero
 
-            // merge rational and vectors
-            if (newVectors.isEmpty()) {
-                // no vectors - just append the rational
-                newExpressions.add(rationalExponentProduct)
+            if (rationalExponentProduct != Expressions.one) {
+
+                // merge rational and vectors
+                if (newVectors.isEmpty()) {
+                    // no vectors - just append the rational
+                    newExpressions.add(rationalExponentProduct)
+                } else {
+                    // at least one vector - merge the rational into the vector
+                    newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, rationalExponentProduct)) } })
+                }
             } else {
-                // at least one vector - merge the rational into the vector
-                newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, rationalExponentProduct)) } })
+                // add vectors without multiplication since the constant factor is 0
+                newExpressions.addAll(newVectors)
             }
-        } else {
-            // add vectors without multiplication since the constant factor is 0
-            newExpressions.addAll(newVectors)
-        }
 
-        if (newExpressions.isEmpty()) return Expressions.one
-        if (newExpressions.size == 1) return newExpressions[0]
-        return MultiplicationExpression(newExpressions)
+            if (newExpressions.isEmpty()) return Expressions.one
+            if (newExpressions.size == 1) return newExpressions[0]
+            return MultiplicationExpression(newExpressions)
+        }
+    }
+
+    private fun multiply(expressions: List<Expression>): Expression {
+        val multiplier = Multiplier()
+        multiplier.pushAll(expressions)
+        return multiplier.toExpression()
     }
 
     private fun safeRoot(base: BigInteger, exponent: BigInteger): BigInteger? {

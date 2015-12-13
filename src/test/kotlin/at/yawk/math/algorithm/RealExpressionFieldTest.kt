@@ -153,6 +153,17 @@ class RealExpressionFieldTest {
                 add(IrrationalConstant.PI, IrrationalConstant.E, int(3)))
     }
 
+    @Test
+    fun testNestedMultiply() {
+        val a = GeneratedVariableExpression()
+        val b = GeneratedVariableExpression()
+        val c = GeneratedVariableExpression()
+        val d = GeneratedVariableExpression()
+        assertEquals(
+                simplify(multiply(multiply(a, b), multiply(c, d))),
+                multiply(a, b, c, d))
+    }
+
     private fun rationalPow(vararg components: Pair<RealNumberExpression, Rational>): RationalExponentiationProduct {
         return RationalExponentiationProduct(
                 components.map { RationalExponentiation(it.first, it.second) })

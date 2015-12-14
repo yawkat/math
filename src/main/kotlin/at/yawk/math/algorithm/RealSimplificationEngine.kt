@@ -108,7 +108,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
         // transform constant exponentiation to RationalExponentProduct so it can be further simplified
         if (base is RealNumberExpression && exponent is Rational) {
-            return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
+            return simplifyRationalExponentiationProduct(listOf(RationalExponentiation(base, exponent)))
         }
         return expression
     }
@@ -155,7 +155,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
 
         protected open fun pushRationalExponentiationProduct(expression: RationalExponentiationProduct) {
-            val simplified = normalizeRationalExponentProductToReal(expression.components)
+            val simplified = simplifyRationalExponentiationProduct(expression.components)
             if (simplified is RationalExponentiationProduct) {
                 addends.add(simplified)
             } else {
@@ -244,7 +244,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
 
         internal fun toExpression(): Expression {
-            val rationalExponentProduct = normalizeRationalExponentProductToReal(reals)
+            val rationalExponentProduct = simplifyRationalExponentiationProduct(reals)
             if (rationalExponentProduct.zero) return Expressions.zero
 
             if (rationalExponentProduct != Expressions.one) {
@@ -276,7 +276,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         return multiplier.toExpression()
     }
 
-    private fun safeIntegerExponentiation(base: IntegerExpression, exponent: Rational): List<RationalExponentiation> {
+    protected final fun simplifyConstantIntegerExponentiation(base: IntegerExpression, exponent: Rational): List<RationalExponentiation> {
         // 0^n = 1 with n != 0
         if (base.zero && !exponent.zero) return listOf()
         // 0^n = 1
@@ -336,8 +336,8 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    private fun normalizeRationalExponentProductToReal(components: List<RationalExponentiation>): RealNumberExpression {
-        val normalized = normalizeRationalExponentProduct(components)
+    private fun simplifyRationalExponentiationProduct(components: List<RationalExponentiation>): RealNumberExpression {
+        val normalized = simplifyRationalExponentiationProductToList(components)
         // if size is 0, the product is 1
         // normalization will make sure components will be empty when value is 1
         if (normalized.size == 0) return Expressions.one
@@ -361,7 +361,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         return RationalExponentiationProduct(normalized)
     }
 
-    private fun normalizeRationalExponentProduct(components: List<RationalExponentiation>): List<RationalExponentiation> {
+    private fun simplifyRationalExponentiationProductToList(components: List<RationalExponentiation>): List<RationalExponentiation> {
         // remove rational bases
         var oldComponents = components
 
@@ -380,7 +380,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
                                     RationalExponentiation(it.base.denominator, it.exponent.negate)
                             )
                         }
-                    is RationalExponentiationProduct -> normalizeRationalExponentProduct(it.base.components.map { c ->
+                    is RationalExponentiationProduct -> simplifyRationalExponentiationProductToList(it.base.components.map { c ->
                         val newExponent = (LocalRational.ofRational(it.exponent) * c.exponent).normalize().toRational()
                         RationalExponentiation(c.base, newExponent)
                     })
@@ -413,7 +413,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
             // evaluate integer components where possible
             newComponents = newComponents.flatMap {
                 if (it.base !is IntegerExpression) listOf(it) else {
-                    safeIntegerExponentiation(it.base, it.exponent)
+                    simplifyConstantIntegerExponentiation(it.base, it.exponent)
                 }
             }
 

@@ -1,6 +1,6 @@
 package at.yawk.math.ui.jeuclid
 
-import at.yawk.math.algorithm.BasicRealSimplificationEngine
+import at.yawk.math.algorithm.EvaluatingRealSimplificationEngine
 import at.yawk.math.algorithm.RealSimplificationEngine
 import at.yawk.math.data.Expressions
 import at.yawk.math.data.IrrationalConstant
@@ -17,7 +17,7 @@ class ExpressionRendererTest {
     @Test
     fun test() {
         Assert.assertEquals(
-                ExpressionRenderer.toMathMl(BasicRealSimplificationEngine.simplify(Expressions.divide(Expressions.int(5), IrrationalConstant.PI))),
+                ExpressionRenderer.toMathMl(EvaluatingRealSimplificationEngine.simplify(Expressions.divide(Expressions.int(5), IrrationalConstant.PI))),
                 HEADER + "<mfrac><mrow><mn>5</mn></mrow><mrow><mtext>pi</mtext></mrow></mfrac>" + FOOTER
         )
     }

@@ -1,6 +1,6 @@
 package at.yawk.math.algorithm
 
-import at.yawk.math.algorithm.BasicRealSimplificationEngine.simplify
+import at.yawk.math.algorithm.EvaluatingRealSimplificationEngine.simplify
 import at.yawk.math.data.*
 import at.yawk.math.data.Expressions.add
 import at.yawk.math.data.Expressions.divide

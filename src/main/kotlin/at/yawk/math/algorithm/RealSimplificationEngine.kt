@@ -13,7 +13,7 @@ import kotlin.math.unaryMinus
 /**
  * Simplification engine that computes constant values but does not solve addition, multiplication etc.
  */
-object BasicRealSimplificationEngine : RealSimplificationEngine()
+object EvaluatingRealSimplificationEngine : RealSimplificationEngine()
 
 /**
  * Simplification engine that tries to transform expressions to a simple chain of additions, i.e.:

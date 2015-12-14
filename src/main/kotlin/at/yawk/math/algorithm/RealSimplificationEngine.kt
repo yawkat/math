@@ -1,8 +1,10 @@
 package at.yawk.math.algorithm
 
 import at.yawk.math.data.*
+import at.yawk.math.data.Vector
 import org.slf4j.LoggerFactory
 import java.math.BigInteger
+import java.util.*
 import kotlin.math.div
 import kotlin.math.plus
 import kotlin.math.times
@@ -18,6 +20,58 @@ object BasicRealSimplificationEngine : RealSimplificationEngine()
  * `(x - 1)(x + 1) => x^2 - 1`
  */
 object DistributiveSumSimplificationEngine : RealSimplificationEngine() {
+    private class MultiplierImpl(engine: DistributiveSumSimplificationEngine) : Multiplier(engine) {
+        val additions = arrayListOf<AdditionExpression>()
+
+        override fun pushOther(expression: Expression) {
+            when (expression) {
+                is AdditionExpression -> additions.add(expression)
+                else -> super.pushOther(expression)
+            }
+        }
+
+        override fun toExpression(): Expression {
+            val baseProduct = super.toExpression()
+            if (additions.isNotEmpty()) {
+                val additionsAndBase: List<List<Expression>> = additions.map { it.components }
+                        .plus<List<Expression>>(listOf(baseProduct))
+                return AdditionExpression(
+                        getCombinations(additionsAndBase)
+                                .map { engine.simplifyMultiplication(it) }
+                )
+            } else {
+                return baseProduct
+            }
+        }
+    }
+
+    override fun makeMultiplier(): Multiplier = MultiplierImpl(this)
+}
+
+/**
+ * Get all distributive combinations of the input parameters.
+ *
+ * ```
+ * input = [[a, b], [c, d], \[e]] # (a+b)(c+d)e
+ * output = [[a, c, e], [a, d, e], [b, c, e], [b, d, e]] # ace+ade+bce+bde
+ * ```
+ */
+internal fun <E> getCombinations(elements: List<List<E>>): List<List<E>> {
+    if (elements.size == 0) return emptyList()
+    // (a+b+c+d) = (a)+(b)+(c)+(d)
+    if (elements.size == 1) return elements[0].map { listOf(it) }
+
+    // recurse: (a+b)(c+d)(e+f) = (a+b)((c+d)(e+f))
+    val left = getCombinations(elements.subList(0, elements.size - 1))
+    val right = elements.last()
+
+    val combinations = ArrayList<List<E>>(left.size * right.size)
+    for (lhs: List<E> in left) {
+        for (rhs: E in right) {
+            combinations.add(lhs + rhs)
+        }
+    }
+    return combinations
 }
 
 abstract class RealSimplificationEngine : SimplificationEngine {
@@ -116,7 +170,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
     /**
      * Helper class used to add a set of expressions
      */
-    protected open inner class Adder {
+    protected open class Adder(val engine: RealSimplificationEngine) {
         var rationalAddend = LocalRational.ZERO
         var addends = arrayListOf<Expression>()
 
@@ -150,12 +204,12 @@ abstract class RealSimplificationEngine : SimplificationEngine {
             } else {
                 // merge with a vector
                 addends[mergeableVectorIndex] = (addends[mergeableVectorIndex] as Vector)
-                        .mapIndexed { i, row -> simplifyAddition(listOf(row, vector[i])) }
+                        .mapIndexed { i, row -> engine.simplifyAddition(listOf(row, vector[i])) }
             }
         }
 
         protected open fun pushRationalExponentiationProduct(expression: RationalExponentiationProduct) {
-            val simplified = simplifyRationalExponentiationProduct(expression.components)
+            val simplified = engine.simplifyRationalExponentiationProduct(expression.components)
             if (simplified is RationalExponentiationProduct) {
                 addends.add(simplified)
             } else {
@@ -194,7 +248,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    protected open fun makeAdder(): Adder = Adder()
+    protected open fun makeAdder(): Adder = Adder(this)
 
     protected final fun simplifyAddition(expressions: List<Expression>): Expression {
         val adder = makeAdder()
@@ -202,7 +256,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         return adder.toExpression()
     }
 
-    protected open inner class Multiplier {
+    protected open class Multiplier(val engine: RealSimplificationEngine) {
         val reals = arrayListOf<RationalExponentiation>()
         val vectors = arrayListOf<Vector>()
         val others = arrayListOf<Expression>()
@@ -243,8 +297,8 @@ abstract class RealSimplificationEngine : SimplificationEngine {
             others.add(expression)
         }
 
-        internal fun toExpression(): Expression {
-            val rationalExponentProduct = simplifyRationalExponentiationProduct(reals)
+        internal open fun toExpression(): Expression {
+            val rationalExponentProduct = engine.simplifyRationalExponentiationProduct(reals)
             if (rationalExponentProduct.zero) return Expressions.zero
 
             if (rationalExponentProduct != Expressions.one) {
@@ -255,7 +309,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
                     others.add(rationalExponentProduct)
                 } else {
                     // at least one vector - merge the rational into the vector
-                    others.addAll(vectors.map { it.map { row -> simplifyMultiplication(listOf(row, rationalExponentProduct)) } })
+                    others.addAll(vectors.map { it.map { row -> engine.simplifyMultiplication(listOf(row, rationalExponentProduct)) } })
                 }
             } else {
                 // add vectors without multiplication since the constant factor is 0
@@ -268,7 +322,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    protected open fun makeMultiplier() = Multiplier()
+    protected open fun makeMultiplier() = Multiplier(this)
 
     protected final fun simplifyMultiplication(expressions: List<Expression>): Expression {
         val multiplier = makeMultiplier()

@@ -181,6 +181,30 @@ class RealSimplificationEngineTest {
                 rationalPow(Pair(int(5), rational(1, 12)), Pair(int(3), rational(1, 2))))
     }
 
+    @Test
+    fun testCombinations() {
+        assertEquals(
+                getCombinations(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e"))).toSet(),
+                setOf(listOf("a", "c", "e"), listOf("a", "d", "e"),
+                        listOf("b", "c", "e"), listOf("b", "d", "e"))
+        )
+    }
+
+    @Test
+    fun testDistributiveSum() {
+        val a = GeneratedVariableExpression()
+        val b = GeneratedVariableExpression()
+        val c = GeneratedVariableExpression()
+        val d = GeneratedVariableExpression()
+        val e = GeneratedVariableExpression()
+        assertEquals(
+                DistributiveSumSimplificationEngine.simplify(
+                        multiply(add(a, b), add(c, d), e)
+                ),
+                add(multiply(a, c, e), multiply(a, d, e), multiply(b, c, e), multiply(b, d, e))
+        )
+    }
+
     private fun rationalPow(vararg components: Pair<RealNumberExpression, Rational>): RationalExponentiationProduct {
         return RationalExponentiationProduct(
                 components.map { RationalExponentiation(it.first, it.second) })

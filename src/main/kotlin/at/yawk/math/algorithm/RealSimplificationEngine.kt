@@ -56,7 +56,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
                 .normalize().toRational()
     }
 
-    private fun simplifyDotProduct(expression: DotProductExpression): Expression {
+    protected open fun simplifyDotProduct(expression: DotProductExpression): Expression {
         if (expression.left is Vector && expression.right is Vector
                 && expression.left.isCompatibleWith(expression.right)
                 && expression.left.dimension > 0) {
@@ -73,98 +73,137 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    private fun simplifyLcm(expression: LcmExpression): Expression {
+    protected open fun simplifyLcm(expression: LcmExpression): Expression {
         if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
                 expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
+            // if both are positive integers, calculate the LCM
+
             return LcmSolver.lcm(expression.left, expression.right)
         } else {
             return expression
         }
     }
 
-    private fun simplifyGcd(expression: GcdExpression): Expression {
+    protected open fun simplifyGcd(expression: GcdExpression): Expression {
         if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
                 expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
+            // if both are positive integers, calculate the GCD
+
             return GcdSolver.gcd(expression.left, expression.right)
         } else {
             return expression
         }
     }
 
-    private fun simplifyExponentiation(expression: ExponentiationExpression): Expression {
+    protected open fun simplifyExponentiation(expression: ExponentiationExpression): Expression {
         val base = expression.base
         val exponent = expression.exponent
+        // (a/b)^-1 = b/a
         if (exponent == Expressions.minusOne && base is Rational) {
             return base.reciprocal
         }
+        // a^1 = a
         if (exponent == Expressions.one) {
             return base
         }
+        // transform constant exponentiation to RationalExponentProduct so it can be further simplified
         if (base is RealNumberExpression && exponent is Rational) {
             return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
         }
         return expression
     }
 
-    protected inner class Adder {
-        var local = LocalRational.ZERO
-        var newExpressions = arrayListOf<Expression>()
+    /**
+     * Helper class used to add a set of expressions
+     */
+    protected open inner class Adder {
+        var rationalAddend = LocalRational.ZERO
+        var addends = arrayListOf<Expression>()
 
-        fun pushAll(expressions: List<Expression>) {
+        internal fun pushAll(expressions: List<Expression>) {
             for (expression in expressions) {
                 push(expression)
             }
         }
 
-        fun push(expression: Expression) {
+        private fun push(expression: Expression) {
             when (expression) {
-                is IntegerExpression -> local += expression
-                is Rational -> local += expression
-                is Vector -> {
-                    var merged = false
-                    for (i in 0..newExpressions.size - 1) {
-                        val item = newExpressions[i]
-                        if (item is Vector && expression.isCompatibleWith(item)) {
-                            // we can merge these two vectors
-                            newExpressions[i] = item.mapIndexed { i, row -> simplifyAddition(listOf(row, expression[i])) }
-                            merged = true
-                            break
-                        }
-                    }
-                    if (!merged) newExpressions.add(expression)
-                }
-                is RationalExponentiationProduct -> newExpressions.add(normalizeRationalExponentProductToReal(expression.components))
-                is ExponentiationExpression -> {
-                    val base = expression.base
-                    val exponent = expression.exponent
-                    if (base is RealNumberExpression && exponent is Rational) {
-                        newExpressions.add(normalizeRationalExponentProductToReal(
-                                listOf(RationalExponentiation(base, exponent))))
-                    } else {
-                        newExpressions.add(expression)
-                    }
-                }
-                is AdditionExpression -> pushAll(expression.components)
-                else -> newExpressions.add(expression)
+                is Rational -> pushRational(expression)
+                is Vector -> pushVector(expression)
+                is RationalExponentiationProduct -> pushRationalExponentiationProduct(expression)
+                is AdditionExpression -> pushAddition(expression)
+                else -> pushOther(expression)
             }
         }
 
-        fun flushLocal() {
-            if (local != LocalRational.ZERO) newExpressions.add(local.toRational())
-            local = LocalRational.ZERO
+        /**
+         * Push the given rational by adding it to [rationalAddend]
+         */
+        protected open fun pushRational(rational: Rational) {
+            rationalAddend += rational
         }
 
-        fun toExpression(): Expression {
+        /**
+         * (a,b)+(c,d) = (a+b,c+d)
+         */
+        protected open fun pushVector(vector: Vector) {
+            val mergeableVectorIndex = addends.indexOfFirst { it is Vector && vector.isCompatibleWith(it) }
+            if (mergeableVectorIndex == -1) {
+                // cannot merge
+                addends.add(vector)
+            } else {
+                // merge with a vector
+                addends[mergeableVectorIndex] = (addends[mergeableVectorIndex] as Vector)
+                        .mapIndexed { i, row -> simplifyAddition(listOf(row, vector[i])) }
+            }
+        }
+
+        protected open fun pushRationalExponentiationProduct(expression: RationalExponentiationProduct) {
+            val simplified = normalizeRationalExponentProductToReal(expression.components)
+            if (simplified is RationalExponentiationProduct) {
+                addends.add(simplified)
+            } else {
+                // if the simplified version is not a RationalExponentiationProduct, it might be a Rational or Integer and we can optimize that
+                push(simplified)
+            }
+        }
+
+        protected open fun pushAddition(expression: AdditionExpression) {
+            pushAll(expression.components)
+        }
+
+        protected open fun pushOther(expression: Expression) {
+            addends.add(expression)
+        }
+
+        /**
+         * Flush the [rationalAddend] into the [addends] and reset [rationalAddend] back to `0`.
+         */
+        internal fun flushLocal() {
+            if (rationalAddend != LocalRational.ZERO) {
+                addends.add(rationalAddend.toRational())
+                rationalAddend = LocalRational.ZERO
+            }
+        }
+
+        /**
+         * Create an [AdditionExpression] representing all pushed expressions.
+         */
+        internal fun toExpression(): Expression {
             flushLocal()
 
-            if (newExpressions.isEmpty()) return Expressions.zero
-            if (newExpressions.size == 1) return newExpressions[0]
-            return AdditionExpression(newExpressions)
+            if (addends.isEmpty()) return Expressions.zero
+            if (addends.size == 1) return addends[0]
+            return AdditionExpression(addends)
         }
     }
 
+    protected open fun makeAdder(): Adder {
+        return Adder()
+    }
+
     private fun simplifyAddition(expressions: List<Expression>): Expression {
-        val adder = Adder()
+        val adder = makeAdder()
         adder.pushAll(expressions)
         return adder.toExpression()
     }
@@ -387,7 +426,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
     }
 }
 
-internal data class LocalRational(val numerator: BigInteger, val denominator: BigInteger) {
+data class LocalRational(val numerator: BigInteger, val denominator: BigInteger) {
     companion object {
         val ZERO = LocalRational(BigInteger.ZERO, BigInteger.ONE)
         val ONE = LocalRational(BigInteger.ONE, BigInteger.ONE)
@@ -428,13 +467,6 @@ internal data class LocalRational(val numerator: BigInteger, val denominator: Bi
         } else {
             return SimpleRational(Expressions.int(numerator), Expressions.int(denominator))
         }
-    }
-
-    operator fun plus(int: IntegerExpression): LocalRational {
-        return LocalRational(
-                numerator + int.value * denominator,
-                denominator
-        ).normalize()
     }
 
     operator fun plus(rational: Rational): LocalRational {

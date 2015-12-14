@@ -194,66 +194,84 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    protected open fun makeAdder(): Adder {
-        return Adder()
-    }
+    protected open fun makeAdder(): Adder = Adder()
 
-    private fun simplifyAddition(expressions: List<Expression>): Expression {
+    protected final fun simplifyAddition(expressions: List<Expression>): Expression {
         val adder = makeAdder()
         adder.pushAll(expressions)
         return adder.toExpression()
     }
 
-    private inner class Multiplier {
-        val newExpressions = arrayListOf<Expression>()
-        val newVectors = arrayListOf<Vector>()
+    protected open inner class Multiplier {
+        val reals = arrayListOf<RationalExponentiation>()
+        val vectors = arrayListOf<Vector>()
+        val others = arrayListOf<Expression>()
 
-        // combine rationals
-        val rationalExponentProductItems = arrayListOf<RationalExponentiation>()
-
-        fun pushAll(expressions: List<Expression>) {
+        internal final fun pushAll(expressions: List<Expression>) {
             for (expression in expressions) {
                 push(expression)
             }
         }
 
-        fun push(expression: Expression) {
+        internal final fun push(expression: Expression) {
             when (expression) {
-                is RationalExponentiation -> rationalExponentProductItems.add(expression)
-                is RealNumberExpression -> rationalExponentProductItems.add(RationalExponentiation(expression, Expressions.one))
-                is Vector -> newVectors.add(expression)
-                is MultiplicationExpression -> pushAll(expression.components)
-                else -> newExpressions.add(expression)
+                is RationalExponentiation -> pushRationalExponentiation(expression)
+                is RealNumberExpression -> pushReal(expression)
+                is Vector -> pushVector(expression)
+                is MultiplicationExpression -> pushMultiplication(expression)
+                else -> pushOther(expression)
             }
         }
 
-        fun toExpression(): Expression {
-            val rationalExponentProduct = normalizeRationalExponentProductToReal(rationalExponentProductItems)
+        protected open fun pushRationalExponentiation(expression: RationalExponentiation) {
+            reals.add(expression)
+        }
+
+        protected open fun pushReal(expression: RealNumberExpression) {
+            pushRationalExponentiation(RationalExponentiation(expression, Expressions.one))
+        }
+
+        protected open fun pushVector(expression: Vector) {
+            vectors.add(expression)
+        }
+
+        protected open fun pushMultiplication(expression: MultiplicationExpression) {
+            pushAll(expression.components)
+        }
+
+        protected open fun pushOther(expression: Expression) {
+            others.add(expression)
+        }
+
+        internal fun toExpression(): Expression {
+            val rationalExponentProduct = normalizeRationalExponentProductToReal(reals)
             if (rationalExponentProduct.zero) return Expressions.zero
 
             if (rationalExponentProduct != Expressions.one) {
 
                 // merge rational and vectors
-                if (newVectors.isEmpty()) {
+                if (vectors.isEmpty()) {
                     // no vectors - just append the rational
-                    newExpressions.add(rationalExponentProduct)
+                    others.add(rationalExponentProduct)
                 } else {
                     // at least one vector - merge the rational into the vector
-                    newExpressions.addAll(newVectors.map { it.map { row -> simplifyMultiplication(listOf(row, rationalExponentProduct)) } })
+                    others.addAll(vectors.map { it.map { row -> simplifyMultiplication(listOf(row, rationalExponentProduct)) } })
                 }
             } else {
                 // add vectors without multiplication since the constant factor is 0
-                newExpressions.addAll(newVectors)
+                others.addAll(vectors)
             }
 
-            if (newExpressions.isEmpty()) return Expressions.one
-            if (newExpressions.size == 1) return newExpressions[0]
-            return MultiplicationExpression(newExpressions)
+            if (others.isEmpty()) return Expressions.one
+            if (others.size == 1) return others[0]
+            return MultiplicationExpression(others)
         }
     }
 
-    private fun simplifyMultiplication(expressions: List<Expression>): Expression {
-        val multiplier = Multiplier()
+    protected open fun makeMultiplier() = Multiplier()
+
+    protected final fun simplifyMultiplication(expressions: List<Expression>): Expression {
+        val multiplier = makeMultiplier()
         multiplier.pushAll(expressions)
         return multiplier.toExpression()
     }

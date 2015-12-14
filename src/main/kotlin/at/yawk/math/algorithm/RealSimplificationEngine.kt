@@ -58,18 +58,16 @@ abstract class RealSimplificationEngine : SimplificationEngine {
 
     private fun simplifyDotProduct(expression: DotProductExpression): Expression {
         if (expression.left is Vector && expression.right is Vector
-                && expression.left.dimension == expression.right.dimension
+                && expression.left.isCompatibleWith(expression.right)
                 && expression.left.dimension > 0) {
-            var sum: Expression? = null
+            // if both are vectors and compatible, expand the cross product
+
+            val sum = arrayListOf<Expression>()
             expression.left.rows.forEachIndexed { i, lhs ->
                 val rhs = expression.right[i]
-                if (sum == null) {
-                    sum = simplifyMultiplication(listOf(lhs, rhs))
-                } else {
-                    sum = simplifyAddition(listOf(sum!!, simplifyMultiplication(listOf(lhs, rhs))))
-                }
+                sum.add(simplifyMultiplication(listOf(lhs, rhs)))
             }
-            return simplify(sum!!)
+            return simplifyAddition(sum)
         } else {
             return expression
         }

@@ -318,7 +318,6 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         // if size is 0, the product is 1
         // normalization will make sure components will be empty when value is 1
         if (normalized.size == 0) return Expressions.one
-        if (normalized.size == 1 && normalized[0].exponent == Expressions.one) return normalized[0].base
         // try representing as a single rational
         // base is never rational, always int or irrational!
         if (normalized.all { it.exponent.abs == Expressions.one && it.base is IntegerExpression }) {
@@ -330,6 +329,11 @@ abstract class RealSimplificationEngine : SimplificationEngine {
                     lhs / rhs.base as IntegerExpression
                 }
             }).toRational()
+        }
+        // flatten product if possible
+        if (normalized.size == 1) {
+            if (normalized[0].exponent == Expressions.one) return normalized[0].base
+            return normalized[0]
         }
         return RationalExponentiationProduct(normalized)
     }

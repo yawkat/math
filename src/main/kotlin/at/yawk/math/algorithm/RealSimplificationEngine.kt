@@ -259,6 +259,11 @@ abstract class RealSimplificationEngine : SimplificationEngine {
     }
 
     private fun safeIntegerExponentiation(base: IntegerExpression, exponent: Rational): List<RationalExponentiation> {
+        // 0^n = 1 with n != 0
+        if (base.zero && !exponent.zero) return listOf()
+        // 0^n = 1
+        if (base.value == BigInteger.ONE) return listOf()
+
         if (exponent == Expressions.one) return listOf(RationalExponentiation(base, exponent)) // shortcut
         try {
             // computation time limit: don't exceed 512 bits in exponentiation
@@ -279,7 +284,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
             val exponentiations = arrayListOf<RationalExponentiation>()
 
             val denominator = exponent.denominator.value.abs()
-            val rootContentFactorization = PrimeFactorSolver.factorize(rootContent)
+            val rootContentFactorization = PrimeFactorSolver.factorize(rootContent.abs())
 
             for (e in rootContentFactorization.primeFactors) {
                 var factorNumerator = BigInteger.valueOf(e.value.toLong())
@@ -340,32 +345,34 @@ abstract class RealSimplificationEngine : SimplificationEngine {
 
     private fun normalizeRationalExponentProduct(components: List<RationalExponentiation>): List<RationalExponentiation> {
         // remove rational bases
-        var oldComponents = components.flatMap {
-            when (it.base) {
-                is Rational ->
-                    if (it.base.denominator == Expressions.one) {
-                        listOf(RationalExponentiation(it.base.numerator, it.exponent))
-                    } else {
-                        // explode rationals
-                        normalizeRationalExponentProduct(listOf(
-                                RationalExponentiation(it.base.numerator, it.exponent),
-                                RationalExponentiation(it.base.denominator, it.exponent.negate)
-                        ))
-                    }
-                is RationalExponentiationProduct -> normalizeRationalExponentProduct(it.base.components.map { c ->
-                    val newExponent = (LocalRational.ofRational(it.exponent) * c.exponent).normalize().toRational()
-                    RationalExponentiation(c.base, newExponent)
-                })
-                is RationalExponentiation -> {
-                    val newExponent = (LocalRational.ofRational(it.exponent) * it.exponent).normalize().toRational()
-                    listOf(RationalExponentiation(it.base, newExponent))
-                }
-                else -> listOf(it)
-            }
-        }
+        var oldComponents = components
 
         do {
             var newComponents = oldComponents
+
+            newComponents = newComponents.flatMap {
+                when (it.base) {
+                    is Rational ->
+                        if (it.base.denominator == Expressions.one) {
+                            listOf(RationalExponentiation(it.base.numerator, it.exponent))
+                        } else {
+                            // explode rationals
+                            listOf(
+                                    RationalExponentiation(it.base.numerator, it.exponent),
+                                    RationalExponentiation(it.base.denominator, it.exponent.negate)
+                            )
+                        }
+                    is RationalExponentiationProduct -> normalizeRationalExponentProduct(it.base.components.map { c ->
+                        val newExponent = (LocalRational.ofRational(it.exponent) * c.exponent).normalize().toRational()
+                        RationalExponentiation(c.base, newExponent)
+                    })
+                    is RationalExponentiation -> {
+                        val newExponent = (LocalRational.ofRational(it.base.exponent) * it.exponent).normalize().toRational()
+                        listOf(RationalExponentiation(it.base.base, newExponent))
+                    }
+                    else -> listOf(it)
+                }
+            }
 
             // group by base: same base -> add exponents
             newComponents = newComponents.groupBy { it.base }.map {

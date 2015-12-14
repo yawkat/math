@@ -50,7 +50,7 @@ object PrimeFactorSolver {
      * Attempt to factorize the given integer. The result may contain a non-prime as its last element if the number is too large.
      */
     fun factorize(expr: BigInteger): FactorizationResult {
-        if (expr <= BigInteger.ONE) throw IllegalArgumentException("Number must be larger than 1")
+        if (expr <= BigInteger.ONE) throw IllegalArgumentException("Number must be larger than 1 (was $expr)")
 
         val factorization = hashMapOf<Int, Int>()
 

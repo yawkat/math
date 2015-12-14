@@ -19,6 +19,25 @@ import javax.xml.transform.stream.StreamSource
  * @author yawkat
  */
 object ExpressionRenderer {
+    private enum class ExpressionDisplayType {
+        /**
+         * Open expression like a + b, a - b
+         */
+        OPEN_LOW_PRIORITY,
+        /**
+         * Open expression like a * b, a / b
+         */
+        OPEN_MEDIUM_PRIORITY,
+        /**
+         * Open expression like a ^ b
+         */
+        OPEN_HIGH_PRIORITY,
+        /**
+         * Closed expression like (a + b)
+         */
+        CLOSED,
+    }
+
     private val radix = 10
 
     fun render(expression: Expression): BufferedImage {
@@ -45,7 +64,7 @@ object ExpressionRenderer {
         return xml
     }
 
-    private fun toNode(expression: Expression): Node {
+    private fun toNode(expression: Expression, displayType: ExpressionDisplayType = ExpressionDisplayType.OPEN_LOW_PRIORITY): Node {
         when (expression) {
             is IntegerExpression -> return number(expression.toString(radix))
             is Rational ->
@@ -63,7 +82,7 @@ object ExpressionRenderer {
                     val exponentNode = if (exponent.denominator == Expressions.int(2)) null else toNode(exponent.denominator)
                     return root(toNode(expression.base), exponentNode)
                 }
-                return exp(toNode(expression.base), toNode(exponent))
+                return exp(toNode(expression.base, ExpressionDisplayType.CLOSED), toNode(exponent))
             }
             is RationalExponentiationProduct -> {
                 fun expressionChainToNodes(chain: List<RationalExponentiation>): List<Node> {
@@ -72,10 +91,10 @@ object ExpressionRenderer {
                     for (item in chain) {
                         if (needsTimesSign) nodes.add(operator("·"))
                         if (item.exponent == Expressions.one) {
-                            nodes.add(toNode(item.base))
-                            needsTimesSign = true
+                            nodes.add(toNode(item.base, ExpressionDisplayType.OPEN_HIGH_PRIORITY))
+                            needsTimesSign = true // todo: only for ints
                         } else {
-                            nodes.add(toNode(item))
+                            nodes.add(toNode(item, ExpressionDisplayType.OPEN_HIGH_PRIORITY))
                             needsTimesSign = false
                         }
                     }
@@ -105,20 +124,29 @@ object ExpressionRenderer {
                 val nodes = arrayListOf<Node>()
                 for (component in expression.components) {
                     if (!nodes.isEmpty()) nodes.add(operator("+"))
-                    nodes.add(toNode(component))
+                    nodes.add(toNode(component, ExpressionDisplayType.OPEN_MEDIUM_PRIORITY))
                 }
-                return row(nodes)
+                return surroundWithParenthesesIfNecessary(row(nodes), displayType, ExpressionDisplayType.OPEN_LOW_PRIORITY)
             }
             is MultiplicationExpression -> {
                 val nodes = arrayListOf<Node>()
                 for (component in expression.components) {
                     if (!nodes.isEmpty()) nodes.add(operator("·"))
-                    nodes.add(toNode(component))
+                    nodes.add(toNode(component, ExpressionDisplayType.OPEN_HIGH_PRIORITY))
                 }
-                return row(nodes)
+                return surroundWithParenthesesIfNecessary(row(nodes), displayType, ExpressionDisplayType.OPEN_MEDIUM_PRIORITY)
             }
             is IrrationalConstant -> return text(expression.constantString)
             else -> return text(expression.toString(radix))
+        }
+    }
+
+    private fun surroundWithParenthesesIfNecessary(node: Node, expectedDisplayType: ExpressionDisplayType, displayType: ExpressionDisplayType): Node {
+        if (displayType < expectedDisplayType) {
+            // todo: is operator right for parentheses?
+            return row(listOf(operator("("), node, operator(")")))
+        } else {
+            return node
         }
     }
 

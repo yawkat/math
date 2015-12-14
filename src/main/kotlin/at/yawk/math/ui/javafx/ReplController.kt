@@ -1,6 +1,9 @@
 package at.yawk.math.ui.javafx
 
+import at.yawk.math.parser.ChainedParserContext
+import at.yawk.math.parser.DefaultParserContext
 import at.yawk.math.parser.ExpressionParser
+import at.yawk.math.parser.NamedFunctionVariableParserContext
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Node
@@ -14,9 +17,7 @@ class ReplController {
 
     @FXML
     fun initialize() {
-        val firstParser = ExpressionParser()
-        firstParser.addDefaultFunctions()
-        addStep(firstParser)
+        addStep(ExpressionParser(ChainedParserContext(DefaultParserContext, NamedFunctionVariableParserContext)))
     }
 
     fun addStep(parser: ExpressionParser): ReplStepController {

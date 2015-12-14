@@ -6,20 +6,58 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.math.BigInteger
 
-/**
- * @author yawkat
- */
-class ExpressionParser {
-    public val functions: MutableMap<String, (List<Expression>) -> Expression> = hashMapOf()
-    public val variables: MutableMap<String, Expression> = hashMapOf()
+interface ParserContext {
+    fun getFunction(name: String, parameters: List<Expression>): Expression?
+    fun getVariable(name: String): Expression?
+}
 
-    fun addDefaultFunctions() {
+class ChainedParserContext(vararg val contexts: ParserContext) : ParserContext {
+    override fun getFunction(name: String, parameters: List<Expression>): Expression? {
+        for (ctx in contexts) {
+            val function = ctx.getFunction(name, parameters)
+            if (function != null) return function
+        }
+        return null
+    }
+
+    override fun getVariable(name: String): Expression? {
+        for (ctx in contexts) {
+            val function = ctx.getVariable(name)
+            if (function != null) return function
+        }
+        return null
+    }
+
+}
+
+object NamedFunctionVariableParserContext : ParserContext {
+    override fun getFunction(name: String, parameters: List<Expression>): Expression? {
+        return NamedFunctionExpression(name, parameters)
+    }
+
+    override fun getVariable(name: String): Expression? {
+        return NamedVariableExpression(name)
+    }
+}
+
+object EmptyParserContext : ParserContext {
+    override fun getFunction(name: String, parameters: List<Expression>): Expression? = null
+
+    override fun getVariable(name: String): Expression? = null
+}
+
+object DefaultParserContext : ParserContext {
+    private val functions: MutableMap<String, (List<Expression>) -> Expression> = hashMapOf()
+    private val variables: MutableMap<String, Expression> = hashMapOf()
+
+    init {
         fun makeFunction(factory: (Expression) -> Expression): (List<Expression>) -> Expression {
             return {
                 if (it.size != 1) throw IllegalArgumentException("Function requires exactly one argument")
                 factory.invoke(it[0])
             }
         }
+
         fun makeBiFunction(factory: (Expression, Expression) -> Expression): (List<Expression>) -> Expression {
             return {
                 if (it.size != 2) throw IllegalArgumentException("Function requires exactly two arguments")
@@ -32,11 +70,21 @@ class ExpressionParser {
         functions["dotp"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
         functions["dotproduct"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
         functions["eval"] = makeFunction { EvalAlgorithmExpression(it) }
+        functions["expand"] = makeFunction { ExpandAlgorithmExpression(it) }
 
         variables["e"] = IrrationalConstant.E
         variables["pi"] = IrrationalConstant.PI
     }
 
+    override fun getFunction(name: String, parameters: List<Expression>): Expression? = functions[name]?.invoke(parameters)
+
+    override fun getVariable(name: String): Expression? = variables[name]
+}
+
+/**
+ * @author yawkat
+ */
+class ExpressionParser(val parserContext: ParserContext) {
     fun parse(input: String): Expression {
         val lexer = MathLexer(ANTLRInputStream(input))
         val parser = MathParser(CommonTokenStream(lexer))
@@ -73,11 +121,11 @@ class ExpressionParser {
             }
 
             is MathParser.VariableAccessContext -> {
-                return variables[tree.name.text] ?: throw IllegalArgumentException("No variable for name ${tree.name}")
+                return parserContext.getVariable(tree.name.text) ?: throw IllegalArgumentException("No variable for name ${tree.name.text}")
             }
             is MathParser.FunctionCallContext -> {
-                val f = functions[tree.name.text] ?: throw IllegalArgumentException("No function for name ${tree.name}")
-                return f.invoke(tree.parameters.map { toExpression(it) })
+                return parserContext.getFunction(tree.name.text, tree.parameters.map { toExpression(it) })
+                        ?: throw IllegalArgumentException("No function for name ${tree.name}")
             }
 
             is MathParser.VectorContext -> {

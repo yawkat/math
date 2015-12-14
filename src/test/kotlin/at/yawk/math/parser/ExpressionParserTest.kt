@@ -12,14 +12,14 @@ class ExpressionParserTest {
     @Test
     fun testParse() {
         Assert.assertEquals(
-                ExpressionParser().parse("1 + 2"),
+                ExpressionParser(EmptyParserContext).parse("1 + 2"),
                 Expressions.add(
                         Expressions.int(1),
                         Expressions.int(2)
                 )
         )
         Assert.assertEquals(
-                ExpressionParser().parse("1 + 2 * 3 / 3"),
+                ExpressionParser(EmptyParserContext).parse("1 + 2 * 3 / 3"),
                 Expressions.add(
                         Expressions.int(1),
                         Expressions.divide(
@@ -32,11 +32,15 @@ class ExpressionParserTest {
 
     @Test
     fun testFunction() {
-        val parser = ExpressionParser()
-        parser.functions["f"] = {
-            Assert.assertEquals(it.size, 1)
-            Expressions.multiply(it[0], Expressions.int(2))
-        }
+        val parser = ExpressionParser(object : ParserContext {
+            override fun getVariable(name: String): Expression? = throw UnsupportedOperationException()
+
+            override fun getFunction(name: String, parameters: List<Expression>): Expression? {
+                Assert.assertEquals(name, "f")
+                Assert.assertEquals(parameters.size, 1)
+                return Expressions.multiply(parameters[0], Expressions.int(2))
+            }
+        })
         Assert.assertEquals(
                 parser.parse("f(1)"),
                 Expressions.multiply(Expressions.int(1), Expressions.int(2))

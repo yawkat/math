@@ -13,6 +13,7 @@ import at.yawk.math.data.Expressions.pow
 import at.yawk.math.data.Expressions.rational
 import at.yawk.math.data.Expressions.subtract
 import at.yawk.math.data.Expressions.vector
+import at.yawk.math.parser.EmptyParserContext
 import at.yawk.math.parser.ExpressionParser
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
@@ -174,7 +175,7 @@ class RealSimplificationEngineTest {
 
     @Test
     fun testRemainderRoot() {
-        println(simplify(ExpressionParser().parse("3645^(1/12)")))
+        println(simplify(ExpressionParser(EmptyParserContext).parse("3645^(1/12)")))
         assertEquals(
                 // root_12(3^6 * 5)
                 simplify(pow(int(3645), rational(1, 12))),

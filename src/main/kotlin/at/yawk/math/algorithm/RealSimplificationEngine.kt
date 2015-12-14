@@ -120,13 +120,9 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         var rationalAddend = LocalRational.ZERO
         var addends = arrayListOf<Expression>()
 
-        internal fun pushAll(expressions: List<Expression>) {
-            for (expression in expressions) {
-                push(expression)
-            }
-        }
+        internal final fun pushAll(expressions: List<Expression>) = expressions.forEach { push(it) }
 
-        private fun push(expression: Expression) {
+        internal final fun push(expression: Expression) {
             when (expression) {
                 is Rational -> pushRational(expression)
                 is Vector -> pushVector(expression)
@@ -272,7 +268,9 @@ abstract class RealSimplificationEngine : SimplificationEngine {
 
             val rootContent = base.value.pow(exponent.numerator.value.intValueExact())
             // shortcut
-            if (exponent.denominator == Expressions.one) return listOf(RationalExponentiation(base, Expressions.one))
+            if (exponent.denominator == Expressions.one) {
+                return listOf(RationalExponentiation(Expressions.int(rootContent), Expressions.one))
+            }
             // check for even root of negative base (sqrt(-1))
             if (exponent.denominator.even && rootContent.signum() == -1) {
                 return listOf(RationalExponentiation(Expressions.int(rootContent), SimpleRational(Expressions.one, exponent.denominator)))

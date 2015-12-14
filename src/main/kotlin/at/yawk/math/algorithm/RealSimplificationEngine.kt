@@ -13,6 +13,13 @@ import kotlin.math.unaryMinus
  */
 object BasicRealSimplificationEngine : RealSimplificationEngine()
 
+/**
+ * Simplification engine that tries to transform expressions to a simple chain of additions, i.e.:
+ * `(x - 1)(x + 1) => x^2 - 1`
+ */
+object DistributiveSumSimplificationEngine : RealSimplificationEngine() {
+}
+
 abstract class RealSimplificationEngine : SimplificationEngine {
     private val log = LoggerFactory.getLogger(RealSimplificationEngine::class.java)
 
@@ -32,67 +39,77 @@ abstract class RealSimplificationEngine : SimplificationEngine {
 
     private fun simplify0(expression: Expression): Expression {
         when (expression) {
-            is ExponentiationExpression -> {
-                val base = expression.base
-                val exponent = expression.exponent
-                if (exponent == Expressions.minusOne && base is Rational) {
-                    return base.reciprocal
-                }
-                if (exponent == Expressions.one) {
-                    return base
-                }
-                if (base is RealNumberExpression && exponent is Rational) {
-                    return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
-                }
-                return expression
-            }
-            is AdditionExpression -> return add(expression.components)
-            is MultiplicationExpression -> return multiply(expression.components)
-            is GcdExpression -> {
-                if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
-                        expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
-                    return GcdSolver.gcd(expression.left, expression.right)
-                } else {
-                    return expression
-                }
-            }
-            is LcmExpression -> {
-                if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
-                        expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
-                    return LcmSolver.lcm(expression.left, expression.right)
-                } else {
-                    return expression
-                }
-            }
-            is DotProductExpression -> {
-                if (expression.left is Vector && expression.right is Vector
-                        && expression.left.dimension == expression.right.dimension
-                        && expression.left.dimension > 0) {
-                    var sum: Expression? = null
-                    expression.left.rows.forEachIndexed { i, lhs ->
-                        val rhs = expression.right[i]
-                        if (sum == null) {
-                            sum = multiply(listOf(lhs, rhs))
-                        } else {
-                            sum = add(listOf(sum!!, multiply(listOf(lhs, rhs))))
-                        }
-                    }
-                    return simplify(sum!!)
-                } else {
-                    return expression
-                }
-            }
+            is ExponentiationExpression -> return simplifyExponentiation(expression)
+            is AdditionExpression -> return simplifyAddition(expression.components)
+            is MultiplicationExpression -> return simplifyMultiplication(expression.components)
+            is GcdExpression -> return simplifyGcd(expression)
+            is LcmExpression -> return simplifyLcm(expression)
+            is DotProductExpression -> return simplifyDotProduct(expression)
             is IntegerExpression -> return expression
-            is Rational -> {
-                if (expression.denominator == Expressions.one) return expression.numerator
-                if (expression.denominator == Expressions.minusOne) return expression.numerator.negate
-                return expression
-            }
+            is Rational -> return simplifyRational(expression)
             else -> return expression
         }
     }
 
-    private inner class Adder {
+    private fun simplifyRational(expression: Rational): Expression {
+        if (expression.denominator == Expressions.one) return expression.numerator
+        if (expression.denominator == Expressions.minusOne) return expression.numerator.negate
+        return expression
+    }
+
+    private fun simplifyDotProduct(expression: DotProductExpression): Expression {
+        if (expression.left is Vector && expression.right is Vector
+                && expression.left.dimension == expression.right.dimension
+                && expression.left.dimension > 0) {
+            var sum: Expression? = null
+            expression.left.rows.forEachIndexed { i, lhs ->
+                val rhs = expression.right[i]
+                if (sum == null) {
+                    sum = simplifyMultiplication(listOf(lhs, rhs))
+                } else {
+                    sum = simplifyAddition(listOf(sum!!, simplifyMultiplication(listOf(lhs, rhs))))
+                }
+            }
+            return simplify(sum!!)
+        } else {
+            return expression
+        }
+    }
+
+    private fun simplifyLcm(expression: LcmExpression): Expression {
+        if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
+                expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
+            return LcmSolver.lcm(expression.left, expression.right)
+        } else {
+            return expression
+        }
+    }
+
+    private fun simplifyGcd(expression: GcdExpression): Expression {
+        if (expression.left is IntegerExpression && expression.left.sign == Sign.POSITIVE &&
+                expression.right is IntegerExpression && expression.right.sign == Sign.POSITIVE) {
+            return GcdSolver.gcd(expression.left, expression.right)
+        } else {
+            return expression
+        }
+    }
+
+    private fun simplifyExponentiation(expression: ExponentiationExpression): Expression {
+        val base = expression.base
+        val exponent = expression.exponent
+        if (exponent == Expressions.minusOne && base is Rational) {
+            return base.reciprocal
+        }
+        if (exponent == Expressions.one) {
+            return base
+        }
+        if (base is RealNumberExpression && exponent is Rational) {
+            return normalizeRationalExponentProductToReal(listOf(RationalExponentiation(base, exponent)))
+        }
+        return expression
+    }
+
+    protected inner class Adder {
         var local = LocalRational.ZERO
         var newExpressions = arrayListOf<Expression>()
 
@@ -112,7 +129,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
                         val item = newExpressions[i]
                         if (item is Vector && expression.isCompatibleWith(item)) {
                             // we can merge these two vectors
-                            newExpressions[i] = item.mapIndexed { i, row -> add(listOf(row, expression[i])) }
+                            newExpressions[i] = item.mapIndexed { i, row -> simplifyAddition(listOf(row, expression[i])) }
                             merged = true
                             break
                         }
@@ -149,7 +166,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    private fun add(expressions: List<Expression>): Expression {
+    private fun simplifyAddition(expressions: List<Expression>): Expression {
         val adder = Adder()
         adder.pushAll(expressions)
         return adder.toExpression()
@@ -190,7 +207,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
                     newExpressions.add(rationalExponentProduct)
                 } else {
                     // at least one vector - merge the rational into the vector
-                    newExpressions.addAll(newVectors.map { it.map { row -> multiply(listOf(row, rationalExponentProduct)) } })
+                    newExpressions.addAll(newVectors.map { it.map { row -> simplifyMultiplication(listOf(row, rationalExponentProduct)) } })
                 }
             } else {
                 // add vectors without multiplication since the constant factor is 0
@@ -203,7 +220,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    private fun multiply(expressions: List<Expression>): Expression {
+    private fun simplifyMultiplication(expressions: List<Expression>): Expression {
         val multiplier = Multiplier()
         multiplier.pushAll(expressions)
         return multiplier.toExpression()

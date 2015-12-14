@@ -14,6 +14,12 @@ class ExpressionParser {
     public val variables: MutableMap<String, Expression> = hashMapOf()
 
     fun addDefaultFunctions() {
+        fun makeFunction(factory: (Expression) -> Expression): (List<Expression>) -> Expression {
+            return {
+                if (it.size != 1) throw IllegalArgumentException("Function requires exactly one argument")
+                factory.invoke(it[0])
+            }
+        }
         fun makeBiFunction(factory: (Expression, Expression) -> Expression): (List<Expression>) -> Expression {
             return {
                 if (it.size != 2) throw IllegalArgumentException("Function requires exactly two arguments")
@@ -25,6 +31,7 @@ class ExpressionParser {
         functions["lcm"] = makeBiFunction { a, b -> Expressions.lcm(a, b) }
         functions["dotp"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
         functions["dotproduct"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
+        functions["eval"] = makeFunction { EvalAlgorithmExpression(it) }
 
         variables["e"] = IrrationalConstant.E
         variables["pi"] = IrrationalConstant.PI

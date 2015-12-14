@@ -8,7 +8,7 @@ VariableName: 'a'..'z'+;
 Integer: '0'..'9'+;
 
 vector : '(' (rows+=expressionOpen ',')+ rows+=expressionOpen ')';
-functionCall : name=VariableName '(' ((parameters+=expressionOpen ',')+ parameters+=expressionOpen)? ')';
+functionCall : name=VariableName '(' ((parameters+=expressionOpen ',')* parameters+=expressionOpen)? ')';
 variableAccess : name=VariableName;
 expressionClosed : parenthesesExpression | Integer | functionCall | variableAccess | vector;
 

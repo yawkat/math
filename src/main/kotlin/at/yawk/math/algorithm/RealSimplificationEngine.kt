@@ -51,10 +51,9 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         }
     }
 
-    private fun simplifyRational(expression: Rational): Expression {
-        if (expression.denominator == Expressions.one) return expression.numerator
-        if (expression.denominator == Expressions.minusOne) return expression.numerator.negate
-        return expression
+    protected open fun simplifyRational(expression: Rational): Expression {
+        return LocalRational.ofRational(expression)
+                .normalize().toRational()
     }
 
     private fun simplifyDotProduct(expression: DotProductExpression): Expression {

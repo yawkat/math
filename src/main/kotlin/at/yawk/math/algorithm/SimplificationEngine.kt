@@ -5,6 +5,6 @@ import at.yawk.math.data.Expression
 /**
  * @author yawkat
  */
-interface ExpressionField {
+interface SimplificationEngine {
     fun simplify(expression: Expression): Expression
 }

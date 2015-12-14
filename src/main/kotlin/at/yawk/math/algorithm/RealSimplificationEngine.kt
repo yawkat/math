@@ -9,10 +9,12 @@ import kotlin.math.times
 import kotlin.math.unaryMinus
 
 /**
- * @author yawkat
+ * Simplification engine that computes constant values but does not solve addition, multiplication etc.
  */
-object RealExpressionField : ExpressionField {
-    private val log = LoggerFactory.getLogger(RealExpressionField::class.java)
+object BasicRealSimplificationEngine : RealSimplificationEngine()
+
+abstract class RealSimplificationEngine : SimplificationEngine {
+    private val log = LoggerFactory.getLogger(RealSimplificationEngine::class.java)
 
     override fun simplify(expression: Expression): Expression {
         return expression.visit(object : ExpressionVisitor {
@@ -90,7 +92,7 @@ object RealExpressionField : ExpressionField {
         }
     }
 
-    private class Adder {
+    private inner class Adder {
         var local = LocalRational.ZERO
         var newExpressions = arrayListOf<Expression>()
 
@@ -153,7 +155,7 @@ object RealExpressionField : ExpressionField {
         return adder.toExpression()
     }
 
-    private class Multiplier {
+    private inner class Multiplier {
         val newExpressions = arrayListOf<Expression>()
         val newVectors = arrayListOf<Vector>()
 

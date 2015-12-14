@@ -1,6 +1,6 @@
 package at.yawk.math.ui.javafx
 
-import at.yawk.math.algorithm.RealExpressionField
+import at.yawk.math.algorithm.BasicRealSimplificationEngine
 import at.yawk.math.parser.ExpressionParser
 import at.yawk.math.ui.jeuclid.ExpressionRenderer
 import javafx.embed.swing.SwingFXUtils
@@ -28,7 +28,7 @@ class ReplStepController {
                 resultLabel!!.image = null
             } else {
                 val expression = parser!!.parse(expressionField!!.text)
-                val simplified = RealExpressionField.simplify(expression)
+                val simplified = BasicRealSimplificationEngine.simplify(expression)
                 resultLabel!!.styleClass.remove("error")
                 resultLabel!!.image = SwingFXUtils.toFXImage(ExpressionRenderer.render(simplified), null)
             }

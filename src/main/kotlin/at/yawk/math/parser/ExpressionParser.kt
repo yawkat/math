@@ -1,17 +1,10 @@
 package at.yawk.math.parser
 
-import at.yawk.math.algorithm.RealExpressionField
 import at.yawk.math.data.*
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.math.BigInteger
-
-fun main(args: Array<String>) {
-    val expressionParser = ExpressionParser()
-    expressionParser.addDefaultFunctions()
-    print(RealExpressionField.simplify(expressionParser.parse("pi^2")))
-}
 
 /**
  * @author yawkat

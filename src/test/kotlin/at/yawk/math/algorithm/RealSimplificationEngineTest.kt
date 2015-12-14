@@ -1,6 +1,6 @@
 package at.yawk.math.algorithm
 
-import at.yawk.math.algorithm.RealExpressionField.simplify
+import at.yawk.math.algorithm.BasicRealSimplificationEngine.simplify
 import at.yawk.math.data.*
 import at.yawk.math.data.Expressions.add
 import at.yawk.math.data.Expressions.divide
@@ -20,7 +20,7 @@ import org.testng.annotations.Test
 /**
  * @author yawkat
  */
-class RealExpressionFieldTest {
+class RealSimplificationEngineTest {
     @Test
     fun testPowRational() {
         assertEquals(

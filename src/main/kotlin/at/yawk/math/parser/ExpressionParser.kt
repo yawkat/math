@@ -150,6 +150,9 @@ class ExpressionParser(val parserContext: ParserContext) {
                 assert(last is TerminalNode && last.symbol.type == MathParser.EOF)
                 return toExpression(tree.children[0])
             }
+            is MathParser.AssignmentContext -> {
+                return AssignmentExpression(tree.variable.name.text, toExpression(tree.value))
+            }
             is MathParser.ParenthesesExpressionContext -> return toExpression(tree.value)
 
             is MathParser.ExpressionClosedContext -> return onlyChildToExpression(tree)
@@ -157,6 +160,7 @@ class ExpressionParser(val parserContext: ParserContext) {
             is MathParser.ExpressionOpenHighPriorityContext -> return onlyChildToExpression(tree)
             is MathParser.ExpressionOpenMediumPriorityContext -> return onlyChildToExpression(tree)
             is MathParser.ExpressionOpenLowPriorityContext -> return onlyChildToExpression(tree)
+            is MathParser.ExpressionOpenVeryLowPriorityContext -> return onlyChildToExpression(tree)
         }
 
         throw UnsupportedOperationException(tree.javaClass.name)
@@ -178,5 +182,15 @@ class ExpressionParser(val parserContext: ParserContext) {
     internal fun onlyChildToExpression(tree: RuleContext): Expression {
         assert(tree.childCount == 1, { tree.childCount })
         return toExpression(tree.getChild(0))
+    }
+
+    public data class AssignmentExpression(val name: String, val value: Expression) : Expression {
+        override fun toString(radix: Int): String {
+            return "$name := ${value.toString(radix)}"
+        }
+
+        override fun visit(visitor: ExpressionVisitor): Expression {
+            return visitComposite(visitor, this, { visitor.visitSingleExpression(value) })
+        }
     }
 }

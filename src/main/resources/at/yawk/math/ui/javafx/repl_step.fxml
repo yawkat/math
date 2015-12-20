@@ -6,6 +6,6 @@
 <?import javafx.scene.image.ImageView?>
 <VBox xmlns="http://javafx.com/javafx/8.0.65" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="at.yawk.math.ui.javafx.ReplStepController" styleClass="step">
-    <TextField text="5 + 3" fx:id="expressionField"/>
+    <TextField text="" fx:id="expressionField" onAction="#enter"/>
     <ImageView fx:id="resultLabel" styleClass="result"/>
 </VBox>

@@ -2,7 +2,10 @@ grammar Math;
 
 WS: (' ' | '\t')+ -> channel(HIDDEN);
 
-math: expressionOpen EOF;
+math: (assignment | expressionOpen) EOF;
+
+AssignmentOperator: ':=';
+assignment: variable=variableAccess AssignmentOperator value=expressionOpen;
 
 VariableName: 'a'..'z'+;
 Integer: '0'..'9'+;
@@ -14,7 +17,8 @@ expressionClosed : parenthesesExpression | Integer | functionCall | variableAcce
 
 parenthesesExpression : '(' value=expressionOpen ')';
 
-expressionOpen : expressionOpenLowPriority;
+expressionOpen : inequation | expressionOpenVeryLowPriority;
+expressionOpenVeryLowPriority : addition | expressionOpenLowPriority;
 expressionOpenLowPriority : addition | expressionOpenMediumPriority;
 expressionOpenMediumPriority : multiplication | expressionOpenHighPriority;
 expressionOpenHighPriority : exponentiation | expressionClosed;
@@ -26,3 +30,11 @@ Multiply: '*';
 Divide: '/';
 multiplication: (items+=expressionOpenHighPriority operations+=(Multiply | Divide))+ items+=expressionOpenHighPriority;
 exponentiation: base=expressionClosed '^' exponent=expressionClosed;
+
+Equals: '=';
+NotEquals: '!=';
+LessThan: '<';
+LessThanEquals: '<=';
+GreaterThan: '>';
+GreaterThanEquals: '>=';
+inequation: lhs=expressionOpenLowPriority operation=(NotEquals|Equals|LessThan|LessThanEquals|GreaterThan|GreaterThanEquals) rhs=expressionOpenLowPriority;

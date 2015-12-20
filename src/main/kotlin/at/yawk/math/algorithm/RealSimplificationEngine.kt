@@ -46,6 +46,23 @@ object DistributiveSumSimplificationEngine : RealSimplificationEngine() {
     }
 
     override fun makeMultiplier(): Multiplier = MultiplierImpl(this)
+
+    override fun simplifyExponentiation(expression: ExponentiationExpression): Expression {
+        val exponent = expression.exponent
+        if (exponent is IntegerExpression && exponent.sign == Sign.POSITIVE) {
+            try {
+                val limit = exponent.value.intValueExact()
+                val multiplier = makeMultiplier()
+                for (i in 0..limit - 1) {
+                    multiplier.push(expression.base)
+                }
+                return multiplier.toExpression()
+            } catch(e: ArithmeticException) {
+                // value too large
+            }
+        }
+        return super.simplifyExponentiation(expression)
+    }
 }
 
 /**

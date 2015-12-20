@@ -257,16 +257,22 @@ abstract class RealSimplificationEngine : SimplificationEngine {
          * Create an [AdditionExpression] representing all pushed expressions.
          */
         internal fun toExpression(): Expression {
-            val addendCount = linkedMapOf<Expression, Int>()
+            val addendCount = linkedMapOf<Expression, LocalRational>()
             for (addend in addends) {
-                addendCount.compute(addend, { k, v -> if (v == null) 1 else v + 1 })
+                var count = LocalRational.ONE
+                var key = addend
+                if (addend is MultiplicationExpression) {
+                    for (component in addend.components) {
+                        if (component is Rational) {
+                            count *= component
+                        }
+                    }
+                    key = engine.simplifyMultiplication(addend.components.filter { it !is Rational })
+                }
+                addendCount.compute(key, { k, v -> if (v == null) count else v + count })
             }
             addends = addendCount.mapTo(arrayListOf()) { e ->
-                if (e.value == 1) {
-                    e.key
-                } else {
-                    engine.simplifyMultiplication(listOf(Expressions.int(e.value.toLong()), e.key))
-                }
+                engine.simplifyMultiplication(listOf(e.value.normalize().toRational(), e.key))
             }
 
             flushLocal()
@@ -583,6 +589,13 @@ data class LocalRational(val numerator: BigInteger, val denominator: BigInteger)
         return LocalRational(
                 numerator * rational.denominator.value + rational.numerator.value * denominator,
                 denominator * rational.denominator.value
+        ).normalize()
+    }
+
+    operator fun plus(rational: LocalRational): LocalRational {
+        return LocalRational(
+                numerator * rational.denominator + rational.numerator * denominator,
+                denominator * rational.denominator
         ).normalize()
     }
 

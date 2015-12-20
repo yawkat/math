@@ -35,7 +35,7 @@ object DistributiveSumSimplificationEngine : RealSimplificationEngine() {
             if (additions.isNotEmpty()) {
                 val additionsAndBase: List<List<Expression>> = additions.map { it.components }
                         .plus<List<Expression>>(listOf(baseProduct))
-                return AdditionExpression(
+                return engine.simplifyAddition(
                         getCombinations(additionsAndBase)
                                 .map { engine.simplifyMultiplication(it) }
                 )
@@ -45,7 +45,7 @@ object DistributiveSumSimplificationEngine : RealSimplificationEngine() {
         }
     }
 
-    override fun makeMultiplier(): Multiplier = MultiplierImpl(this)
+    override fun makeMultiplier(): MultiplierImpl = MultiplierImpl(this)
 
     override fun simplifyExponentiation(expression: ExponentiationExpression): Expression {
         val exponent = expression.exponent
@@ -189,7 +189,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
      */
     protected open class Adder(val engine: RealSimplificationEngine) {
         var rationalAddend = LocalRational.ZERO
-        var addends = arrayListOf<Expression>()
+        var addends: MutableList<Expression> = arrayListOf()
 
         internal final fun pushAll(expressions: List<Expression>) = expressions.forEach { push(it) }
 
@@ -257,6 +257,18 @@ abstract class RealSimplificationEngine : SimplificationEngine {
          * Create an [AdditionExpression] representing all pushed expressions.
          */
         internal fun toExpression(): Expression {
+            val addendCount = linkedMapOf<Expression, Int>()
+            for (addend in addends) {
+                addendCount.compute(addend, { k, v -> if (v == null) 1 else v + 1 })
+            }
+            addends = addendCount.mapTo(arrayListOf()) { e ->
+                if (e.value == 1) {
+                    e.key
+                } else {
+                    engine.simplifyMultiplication(listOf(Expressions.int(e.value.toLong()), e.key))
+                }
+            }
+
             flushLocal()
 
             if (addends.isEmpty()) return Expressions.zero

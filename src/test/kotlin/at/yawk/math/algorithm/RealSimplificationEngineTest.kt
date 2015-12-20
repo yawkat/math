@@ -213,7 +213,7 @@ class RealSimplificationEngineTest {
                 DistributiveSumSimplificationEngine.simplify(
                         pow(add(a, Expressions.one), int(2))
                 ),
-                add(multiply(a, a), a, a, Expressions.one)
+                add(multiply(a, a), multiply(a, int(2)), Expressions.one)
         )
     }
 

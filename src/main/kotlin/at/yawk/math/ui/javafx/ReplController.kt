@@ -24,7 +24,6 @@ class ReplController {
         var first: ReplStepController? = null
         for (i in stepCount - 1 downTo 0) {
             val here = addStepAtEnd(false)
-            println("$i: " + steps.get("step-$i", null))
             here.expressionField!!.text = steps.get("step-$i", null)
             first = first ?: here
         }
@@ -74,7 +73,6 @@ class ReplController {
         var i = 0
         while (node != null) {
             steps.put("step-$i", node.expressionField!!.text)
-            println("save $i: " + steps.get("step-$i", null))
             node = node.prev
             i++
         }

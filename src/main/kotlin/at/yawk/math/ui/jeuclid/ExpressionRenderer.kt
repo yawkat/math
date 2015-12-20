@@ -41,7 +41,6 @@ object ExpressionRenderer {
     private val radix = 10
 
     fun render(expression: Expression): BufferedImage {
-        println(expression)
         val xml = toMathMl(expression)
 
         val domNode = Parser.getInstance().parseStreamSource(StreamSource(StringReader(xml)))

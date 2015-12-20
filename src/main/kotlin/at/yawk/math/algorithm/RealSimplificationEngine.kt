@@ -365,8 +365,8 @@ abstract class RealSimplificationEngine : SimplificationEngine {
 
                 // merge rational and vectors
                 if (vectors.isEmpty()) {
-                    // no vectors - just append the rational
-                    others.add(rationalExponentProduct)
+                    // no vectors - just prepend the rational
+                    others.add(0, rationalExponentProduct)
                 } else {
                     // at least one vector - merge the rational into the vector
                     others.addAll(vectors.map { it.map { row -> engine.simplifyMultiplication(listOf(row, rationalExponentProduct)) } })

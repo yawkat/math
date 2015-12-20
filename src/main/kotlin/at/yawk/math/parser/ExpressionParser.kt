@@ -71,6 +71,14 @@ object DefaultParserContext : ParserContext {
         functions["dotproduct"] = makeBiFunction { a, b -> Expressions.dotProduct(a, b) }
         functions["eval"] = makeFunction { EvalAlgorithmExpression(it) }
         functions["expand"] = makeFunction { ExpandAlgorithmExpression(it) }
+        functions["diff"] = {
+            when (it.size) {
+                1 -> DiffAlgorithmExpression(it[0])
+                2 -> DiffAlgorithmExpression(it[0], it[1])
+                3 -> DiffAlgorithmExpression(it[0], it[1], (it[2] as IntegerExpression).value.intValueExact())
+                else -> throw IllegalArgumentException("Function requires one to three arguments")
+            }
+        }
 
         variables["e"] = IrrationalConstant.E
         variables["pi"] = IrrationalConstant.PI

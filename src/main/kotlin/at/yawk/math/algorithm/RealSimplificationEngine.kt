@@ -184,6 +184,19 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         return expression
     }
 
+    protected open fun simplifyIntExponentiation(base: Expression, exponent: BigInteger): Expression {
+        if (exponent == BigInteger.ONE) return base
+        if (exponent == BigInteger.ZERO) return Expressions.one
+        if (base is ExponentiationExpression) {
+            val baseExponent = base.exponent
+            if (baseExponent is Rational) {
+                return simplifyExponentiation(ExponentiationExpression(
+                        base.base, (LocalRational.ofRational(baseExponent) * exponent).normalize().toRational()))
+            }
+        }
+        return ExponentiationExpression(base, Expressions.int(exponent))
+    }
+
     /**
      * Helper class used to add a set of expressions
      */
@@ -294,7 +307,7 @@ abstract class RealSimplificationEngine : SimplificationEngine {
     protected open class Multiplier(val engine: RealSimplificationEngine) {
         val reals = arrayListOf<RationalExponentiation>()
         val vectors = arrayListOf<Vector>()
-        val others = arrayListOf<Expression>()
+        var others: MutableList<Expression> = arrayListOf()
 
         internal final fun pushAll(expressions: List<Expression>) {
             for (expression in expressions) {
@@ -335,6 +348,18 @@ abstract class RealSimplificationEngine : SimplificationEngine {
         internal open fun toExpression(): Expression {
             val rationalExponentProduct = engine.simplifyRationalExponentiationProduct(reals)
             if (rationalExponentProduct.zero) return Expressions.zero
+
+            val otherCount = linkedMapOf<Expression, Long>()
+            for (factor in others) {
+                otherCount.compute(factor, { k, v -> if (v == null) 1 else v + 1 })
+            }
+            others = otherCount.mapTo(arrayListOf()) { e ->
+                if (e.value == 1L) {
+                    e.key
+                } else {
+                    engine.simplifyIntExponentiation(e.key, BigInteger.valueOf(e.value))
+                }
+            }
 
             if (rationalExponentProduct != Expressions.one) {
 
@@ -599,11 +624,22 @@ data class LocalRational(val numerator: BigInteger, val denominator: BigInteger)
         ).normalize()
     }
 
-    operator fun times(int: IntegerExpression): LocalRational {
+    operator fun plus(int: BigInteger): LocalRational {
         return LocalRational(
-                numerator * int.value,
+                numerator + denominator * int,
                 denominator
         ).normalize()
+    }
+
+    operator fun times(int: BigInteger): LocalRational {
+        return LocalRational(
+                numerator * int,
+                denominator
+        ).normalize()
+    }
+
+    operator fun times(int: IntegerExpression): LocalRational {
+        return times(int.value)
     }
 
     operator fun times(rational: Rational): LocalRational {

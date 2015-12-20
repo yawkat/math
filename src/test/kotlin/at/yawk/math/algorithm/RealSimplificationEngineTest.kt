@@ -228,6 +228,17 @@ class RealSimplificationEngineTest {
         )
     }
 
+    @Test
+    fun testJoinFactors() {
+        val a = GeneratedVariableExpression()
+        assertEquals(
+                DistributiveSumSimplificationEngine.simplify(
+                        multiply(a, a)
+                ),
+                pow(a, int(2))
+        )
+    }
+
     private fun rationalPow(vararg components: Pair<RealNumberExpression, Rational>): RationalExponentiationProduct {
         return RationalExponentiationProduct(
                 components.map { RationalExponentiation(it.first, it.second) })

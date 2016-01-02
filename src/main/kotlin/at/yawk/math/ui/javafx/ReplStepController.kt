@@ -16,24 +16,24 @@ import javafx.scene.image.ImageView
  * @author yawkat
  */
 class ReplStepController {
-    @FXML var expressionField: TextField? = null
-    @FXML var resultLabel: ImageView? = null
+    @FXML lateinit var expressionField: TextField
+    @FXML lateinit var resultLabel: ImageView
 
-    var parent: ReplController? = null
+    lateinit var parent: ReplController
 
     var next: ReplStepController? = null
     var prev: ReplStepController? = null
     var context: ParserContext = EmptyParserContext
 
     fun init() {
-        expressionField!!.textProperty().addListener { v -> eval() }
+        expressionField.textProperty().addListener { v -> eval() }
     }
 
     @FXML
     fun enter() {
         val n = next
         if (n == null) {
-            parent!!.addStepAtEnd().focus()
+            parent.addStepAtEnd().focus()
         } else {
             eval()
             n.focus()
@@ -41,25 +41,25 @@ class ReplStepController {
     }
 
     private fun focus() {
-        expressionField!!.requestFocus()
+        expressionField.requestFocus()
     }
 
     fun eval() {
         try {
-            if (expressionField!!.text.trim() == "") {
-                resultLabel!!.styleClass.remove("error")
-                resultLabel!!.image = null
+            if (expressionField.text.trim() == "") {
+                resultLabel.styleClass.remove("error")
+                resultLabel.image = null
             } else {
                 val parser = ExpressionParser(context)
 
-                var expression = parser.parse(expressionField!!.text)
+                var expression = parser.parse(expressionField.text)
                 var toEvaluate = expression
                 if (toEvaluate is ExpressionParser.AssignmentExpression) {
                     toEvaluate = toEvaluate.value
                 }
                 val simplified = if (toEvaluate is AlgorithmExpression) toEvaluate.evaluate() else toEvaluate
-                resultLabel!!.styleClass.remove("error")
-                resultLabel!!.image = SwingFXUtils.toFXImage(ExpressionRenderer.render(simplified), null)
+                resultLabel.styleClass.remove("error")
+                resultLabel.image = SwingFXUtils.toFXImage(ExpressionRenderer.render(simplified), null)
 
                 next?.context = if (expression is ExpressionParser.AssignmentExpression) {
                     val assignment = expression
@@ -81,9 +81,9 @@ class ReplStepController {
             }
         } catch(e: Exception) {
             e.printStackTrace()
-            resultLabel!!.styleClass.add("error")
-            resultLabel!!.image = null // todo
+            resultLabel.styleClass.add("error")
+            resultLabel.image = null // todo
         }
-        parent!!.save()
+        parent.save()
     }
 }
